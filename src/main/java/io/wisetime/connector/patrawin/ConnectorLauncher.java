@@ -87,7 +87,7 @@ public class ConnectorLauncher {
       hikariConfig.setConnectionTimeout(TimeUnit.MINUTES.toMillis(1));
       hikariConfig.setMaximumPoolSize(10);
 
-      log.info("Connecting to Jira database at URL: {}, Username: {}", hikariConfig.getJdbcUrl(),
+      log.info("Connecting to Patrawin database at URL: {}, Username: {}", hikariConfig.getJdbcUrl(),
           hikariConfig.getUsername());
 
       bind(DataSource.class).toInstance(new HikariDataSource(hikariConfig));
