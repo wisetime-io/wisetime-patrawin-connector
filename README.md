@@ -21,19 +21,18 @@ Configuration is done through environment variables. The following configuration
 | Environment Variable  | Description                                         |
 | --------------------  | --------------------------------------------------- |
 | API_KEY               | Your WiseTime Connect API Key                       |
-| PATRAWIN_JDBC_URL     | The JDBC URL for your Jira database                 |
+| PATRAWIN_JDBC_URL     | The JDBC URL for your Patrawin database             |
 | PATRAWIN_DB_USER      | Username to use to connect to the Patrawin database |
 | PATRAWIN_DB_PASSWORD  | Password to use to connect to the Patrawin database |
 
 The following configuration options are optional.
 
-| Environment Variable  | Description                                                                                                                                                                                                                |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| CALLER_KEY            | The caller key that WiseTime should provide with post time webhook calls. The connector does not authenticate Webhook calls if not set.                                                                                    |
-| TAG_UPSERT_PATH       | The WiseTime tag folder path to use for Jira tags. Defaults to `/Jira/` (trailing slash is required). Use `/` for root folder.                                                                                             |
-| TAG_UPSERT_BATCH_SIZE | Number of tags to upsert at a time. A large batch size mitigates API call latency. Defaults to 500.                                                                                                                        |
-| DATA_DIR              | If set, the connector will use the directory as the location for storing data to keep track on the Jira issues it has synced. By default, WiseTime Connector will create a temporary dir under `/tmp` as its data storage. |
-| TIMEZONE              | The timezone to use when posting time to Jira if the default timezone is not available in Jira's database, e.g. `Australia/Perth`. Defaults to `UTC`.                                                                      |
+| Environment Variable  | Description                                                                                                                                                                                                                                    |
+| --------------------- | -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| CALLER_KEY            | The caller key that WiseTime should provide with post time webhook calls. The connector does not authenticate Webhook calls if not set.                                                                                                        |
+| TAG_UPSERT_PATH       | The WiseTime tag folder path to use for Patrawin tags. Defaults to `/Patrawin/` (trailing slash is required). Use `/` for root folder.                                                                                                         |
+| TAG_UPSERT_BATCH_SIZE | Number of tags to upsert at a time. A large batch size mitigates API call latency. Defaults to 500.                                                                                                                                            |
+| DATA_DIR              | If set, the connector will use the directory as the location for storing data to keep track of the Patrawin cases and clients that it has synced. By default, WiseTime Connector will create a temporary dir under `/tmp` as its data storage. |
 
 The connector needs to be able to read from the `ARENDE_1`, `KUND_24`, `BEHORIG_50` and `FAKTURATEXTNR_15` tables, and call the post_time stored procedure in the Patrawin database.
 
