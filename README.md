@@ -1,5 +1,11 @@
 # WiseTime Patrawin Connector
 
+## Status
+
+The WiseTime Patrawin Connector is currently under development, and is not ready for production use. This notice will be removed once the connector is deemed production-ready.
+
+## About
+
 The WiseTime Patrawin Connector connects [WiseTime](https://wisetime.io) to [Patrawin](https://www.cpaglobal.com/ipone-patrawin), and will automatically:
 
 * Create a new WiseTime tag whenever a new case is created in Patrawin
