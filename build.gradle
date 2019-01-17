@@ -86,8 +86,12 @@ dependencies {
     testRuntime 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
     testCompile 'org.mockito:mockito-core:2.22.0'
     testCompile 'org.assertj:assertj-core:3.11.1'
-    testCompile 'org.testcontainers:testcontainers:1.10.5'
-    testCompile 'org.testcontainers:mssqlserver:1.10.5'
+    testCompile('org.testcontainers:testcontainers:1.10.5') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    testCompile('org.testcontainers:mssqlserver:1.10.5') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
     testCompile 'org.flywaydb:flyway-core:5.1.1'
     testCompile ('com.github.javafaker:javafaker:0.16') {
         exclude group: 'org.apache.commons', module: 'commons-lang3'
