@@ -11,11 +11,18 @@ import com.google.inject.Inject;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.time.Instant;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
+import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.integrate.WiseTimeConnector;
 import io.wisetime.generated.connect.TimeGroup;
+import io.wisetime.generated.connect.UpsertTagRequest;
 import spark.Request;
 
 /**
@@ -43,7 +50,12 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @Override
   public void performTagUpdate() {
-    // TODO
+    while (syncCases()) {
+      // Until completion
+    }
+    while (syncClients()) {
+      // Until completion
+    }
   }
 
   @Override
@@ -60,5 +72,102 @@ public class PatrawinConnector implements WiseTimeConnector {
   @VisibleForTesting
   void setSyncStore(final SyncStore syncStore) {
     this.syncStore = syncStore;
+  }
+
+  @VisibleForTesting
+  boolean syncCases() {
+    final Instant lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
+    final List<String> lastPreviouslySyncedCaseNumbers = syncStore.getLastSyncedCaseNumbers();
+    final List<Case> cases = patrawinDao.findCasesOrderedByCreationTime(
+        lastPreviouslySyncedCaseCreationTime,
+        lastPreviouslySyncedCaseNumbers,
+        tagUpsertBatchSize());
+
+    if (cases.isEmpty()) {
+      log.info("No new case tags found. Last case number previously synced: {}", printLast(lastPreviouslySyncedCaseNumbers));
+      return false;
+    } else {
+      try {
+        log.info("Detected {} new {}: {}",
+            cases.size(),
+            cases.size() > 1 ? "cases" : "case",
+            cases.stream().map(Case::getCaseNumber).collect(Collectors.joining(", ")));
+
+        final List<UpsertTagRequest> upsertRequests = cases
+            .stream()
+            .map(i -> i.toUpsertTagRequest(tagUpsertPath()))
+            .collect(Collectors.toList());
+
+        apiClient.tagUpsertBatch(upsertRequests);
+
+        syncStore.setLastSyncedCases(cases);
+        log.info("Last synced case: {}", printLast(cases));
+        return true;
+
+      } catch (IOException e) {
+        // The batch will be retried since we didn't update the last synced cases
+        // Let scheduler know that this batch has failed
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  @VisibleForTesting
+  boolean syncClients() {
+    final Instant lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
+    final List<String> lastPreviouslySyncedClientIds = syncStore.getLastSyncedClientIds();
+    final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
+        lastPreviouslySyncedClientCreationTime,
+        lastPreviouslySyncedClientIds,
+        tagUpsertBatchSize());
+
+    if (clients.isEmpty()) {
+      log.info("No new client tags found. Last client ID previously synced: {}", printLast(lastPreviouslySyncedClientIds));
+      return false;
+    } else {
+      try {
+        log.info("Detected {} new {}: {}",
+            clients.size(),
+            clients.size() > 1 ? "clients" : "client",
+            clients.stream().map(Client::getClientId).collect(Collectors.joining(", ")));
+
+        final List<UpsertTagRequest> upsertRequests = clients
+            .stream()
+            .map(i -> i.toUpsertTagRequest(tagUpsertPath()))
+            .collect(Collectors.toList());
+
+        apiClient.tagUpsertBatch(upsertRequests);
+
+        syncStore.setLastSyncedClients(clients);
+        log.info("Last synced client: {}", printLast(clients));
+        return true;
+
+      } catch (IOException e) {
+        // The batch will be retried since we didn't update the last synced clients
+        // Let scheduler know that this batch has failed
+        throw new RuntimeException(e);
+      }
+    }
+  }
+
+  private int tagUpsertBatchSize() {
+    return RuntimeConfig
+        .getInt(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_BATCH_SIZE)
+        // A large batch mitigates query round trip latency
+        .orElse(500);
+  }
+
+  private String tagUpsertPath() {
+    return RuntimeConfig
+        .getString(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_PATH)
+        .orElse("/Jira/");
+  }
+
+  @VisibleForTesting
+  static <T>String printLast(List<T> items) {
+    if (items.size() == 0) {
+      return "None yet";
+    }
+    return items.get(items.size() - 1).toString();
   }
 }

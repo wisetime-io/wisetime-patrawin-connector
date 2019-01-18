@@ -38,7 +38,7 @@ class SyncStoreTest {
 
   @Test
   void getLastSyncedCaseCreationTime_none() {
-    when(connectorStore.getLong("last-synced-case-creation-time")).thenReturn(Optional.empty());
+    when(connectorStore.getLong("printLast-synced-case-creation-time")).thenReturn(Optional.empty());
     assertThat(syncStore.getLastSyncedCaseCreationTime())
         .isEqualTo(Instant.EPOCH)
         .as("No cases have been synced yet");
@@ -47,25 +47,25 @@ class SyncStoreTest {
   @Test
   void getLastSyncedCaseCreationTime_some() {
     final Instant now = Instant.now();
-    when(connectorStore.getLong("last-synced-case-creation-time")).thenReturn(Optional.of(now.toEpochMilli()));
+    when(connectorStore.getLong("printLast-synced-case-creation-time")).thenReturn(Optional.of(now.toEpochMilli()));
     assertThat(syncStore.getLastSyncedCaseCreationTime())
         .isEqualTo(now)
         .as("We should get back the correct Instant value");
   }
 
   @Test
-  void getLastSyncedCaseNumbersCsv_none() {
-    when(connectorStore.getString("last-synced-case-numbers-csv")).thenReturn(Optional.empty());
-    assertThat(syncStore.getLastSyncedCaseNumbersCsv())
-        .isEmpty()
+  void getLastSyncedCaseNumbers_none() {
+    when(connectorStore.getString("printLast-synced-case-numbers-csv")).thenReturn(Optional.empty());
+    assertThat(syncStore.getLastSyncedCaseNumbers())
+        .hasSize(0)
         .as("No cases have been synced yet");
   }
 
   @Test
-  void getLastSyncedCaseNumbersCsv_some() {
-    when(connectorStore.getString("last-synced-case-numbers-csv")).thenReturn(Optional.of("1,2,3"));
-    assertThat(syncStore.getLastSyncedCaseNumbersCsv())
-        .isEqualTo(Optional.of("1,2,3"))
+  void getLastSyncedCaseNumber_some() {
+    when(connectorStore.getString("printLast-synced-case-numbers-csv")).thenReturn(Optional.of("1@@2@@3"));
+    assertThat(syncStore.getLastSyncedCaseNumbers())
+        .containsExactly("1", "2", "3")
         .as("Some cases have been synced");
   }
 
@@ -91,14 +91,14 @@ class SyncStoreTest {
     ArgumentCaptor<String> caseNumbersCsvCaptor = ArgumentCaptor.forClass(String.class);
     verify(connectorStore, times(1)).putString(
         caseNumbersKeyCaptor.capture(), caseNumbersCsvCaptor.capture());
-    assertThat(caseNumbersKeyCaptor.getValue()).isEqualTo("last-synced-case-numbers-csv");
-    assertThat(caseNumbersCsvCaptor.getValue()).isEqualTo("1,2");
+    assertThat(caseNumbersKeyCaptor.getValue()).isEqualTo("printLast-synced-case-numbers-csv");
+    assertThat(caseNumbersCsvCaptor.getValue()).isEqualTo("1@@2");
 
     ArgumentCaptor<String> caseCreationKeyCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Long> creationTimeCaptor = ArgumentCaptor.forClass(Long.class);
     verify(connectorStore, times(1)).putLong(
         caseCreationKeyCaptor.capture(), creationTimeCaptor.capture());
-    assertThat(caseCreationKeyCaptor.getValue()).isEqualTo("last-synced-case-creation-time");
+    assertThat(caseCreationKeyCaptor.getValue()).isEqualTo("printLast-synced-case-creation-time");
     assertThat(creationTimeCaptor.getValue()).isEqualTo(later.toEpochMilli());
   }
 
@@ -106,7 +106,7 @@ class SyncStoreTest {
 
   @Test
   void getLastSyncedClientCreationTime_none() {
-    when(connectorStore.getLong("last-synced-client-creation-time")).thenReturn(Optional.empty());
+    when(connectorStore.getLong("printLast-synced-client-creation-time")).thenReturn(Optional.empty());
     assertThat(syncStore.getLastSyncedClientCreationTime())
         .isEqualTo(Instant.EPOCH)
         .as("No clients have been synced yet");
@@ -115,25 +115,25 @@ class SyncStoreTest {
   @Test
   void getLastSyncedClientCreationTime_some() {
     final Instant now = Instant.now();
-    when(connectorStore.getLong("last-synced-case-creation-time")).thenReturn(Optional.of(now.toEpochMilli()));
+    when(connectorStore.getLong("printLast-synced-case-creation-time")).thenReturn(Optional.of(now.toEpochMilli()));
     assertThat(syncStore.getLastSyncedCaseCreationTime())
         .isEqualTo(now)
         .as("We should get back the correct Instant value");
   }
 
   @Test
-  void getLastSyncedClientIdsCsv_none() {
-    when(connectorStore.getString("last-synced-client-ids-csv")).thenReturn(Optional.empty());
-    assertThat(syncStore.getLastSyncedClientIdsCsv())
-        .isEmpty()
+  void getLastSyncedClientIds_none() {
+    when(connectorStore.getString("printLast-synced-client-ids-csv")).thenReturn(Optional.empty());
+    assertThat(syncStore.getLastSyncedClientIds())
+        .hasSize(0)
         .as("No clients have been synced yet");
   }
 
   @Test
-  void getLastSyncedClientIdsCsv_some() {
-    when(connectorStore.getString("last-synced-client-ids-csv")).thenReturn(Optional.of("1,2,3"));
-    assertThat(syncStore.getLastSyncedClientIdsCsv())
-        .isEqualTo(Optional.of("1,2,3"))
+  void getLastSyncedClientIds_some() {
+    when(connectorStore.getString("printLast-synced-client-ids-csv")).thenReturn(Optional.of("1@@2@@3"));
+    assertThat(syncStore.getLastSyncedClientIds())
+        .containsExactly("1", "2", "3")
         .as("Some clients have been synced");
   }
 
@@ -159,14 +159,14 @@ class SyncStoreTest {
     ArgumentCaptor<String> clientIdsCsvCaptor = ArgumentCaptor.forClass(String.class);
     verify(connectorStore, times(1)).putString(
         clientIdsKeyCaptor.capture(), clientIdsCsvCaptor.capture());
-    assertThat(clientIdsKeyCaptor.getValue()).isEqualTo("last-synced-client-ids-csv");
-    assertThat(clientIdsCsvCaptor.getValue()).isEqualTo("1,2");
+    assertThat(clientIdsKeyCaptor.getValue()).isEqualTo("printLast-synced-client-ids-csv");
+    assertThat(clientIdsCsvCaptor.getValue()).isEqualTo("1@@2");
 
     ArgumentCaptor<String> clientCreationKeyCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Long> creationTimeCaptor = ArgumentCaptor.forClass(Long.class);
     verify(connectorStore, times(1)).putLong(
         clientCreationKeyCaptor.capture(), creationTimeCaptor.capture());
-    assertThat(clientCreationKeyCaptor.getValue()).isEqualTo("last-synced-client-creation-time");
+    assertThat(clientCreationKeyCaptor.getValue()).isEqualTo("printLast-synced-client-creation-time");
     assertThat(creationTimeCaptor.getValue()).isEqualTo(later.toEpochMilli());
   }
 }

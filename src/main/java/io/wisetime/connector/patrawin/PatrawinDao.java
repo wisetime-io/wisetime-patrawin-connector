@@ -16,7 +16,6 @@ import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -43,11 +42,11 @@ public class PatrawinDao {
    * Find cases
    *
    * @param createdOnOrAfter find cases created on or after this time
-   * @param excludedCaseNumbersCsv comma separated list of case numbers to exclude from results
+   * @param excludedCaseNumbers list of case numbers to exclude from results
    * @param maxResults maximum number of cases to return
    * @return list of cases ordered by creation time ascending
    */
-  List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final Optional<String> excludedCaseNumbersCsv,
+  List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedCaseNumbers,
                                             final int maxResults) {
     // TODO
     return ImmutableList.of();
@@ -57,11 +56,11 @@ public class PatrawinDao {
    * Find clients
    *
    * @param createdOnOrAfter find clients created on or after this time
-   * @param excludedClientIdsCsv comma separated list of client ids to exclude from results
+   * @param excludedClientIds list of client IDs to exclude from results
    * @param maxResults maximum number of clients to return
    * @return list of clients ordered by creation time ascending
    */
-  List<Case> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final Optional<String> excludedClientIdsCsv,
+  List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
                                               final int maxResults) {
     // TODO
     return ImmutableList.of();
