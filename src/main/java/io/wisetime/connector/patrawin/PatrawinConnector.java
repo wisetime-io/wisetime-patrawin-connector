@@ -154,13 +154,13 @@ public class PatrawinConnector implements WiseTimeConnector {
     return RuntimeConfig
         .getInt(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_BATCH_SIZE)
         // A large batch mitigates query round trip latency
-        .orElse(500);
+        .orElse(200);
   }
 
   private String tagUpsertPath() {
     return RuntimeConfig
         .getString(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_PATH)
-        .orElse("/Jira/");
+        .orElse("/Patrawin/");
   }
 
   @VisibleForTesting
