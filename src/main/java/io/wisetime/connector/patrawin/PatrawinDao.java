@@ -11,11 +11,12 @@ import org.codejargon.fluentjdbc.api.FluentJdbc;
 import org.codejargon.fluentjdbc.api.FluentJdbcBuilder;
 import org.codejargon.fluentjdbc.api.mapper.Mappers;
 import org.codejargon.fluentjdbc.api.query.Query;
-import org.immutables.value.Value;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import javax.sql.DataSource;
 
@@ -38,9 +39,32 @@ public class PatrawinDao {
     query().transaction().inNoResult(runnable);
   }
 
-  boolean hasExpectedSchema() {
+  /**
+   * Find cases
+   *
+   * @param createdOnOrAfter find cases created on or after this time
+   * @param excludedCaseNumbersCsv comma separated list of case numbers to exclude from results
+   * @param maxResults maximum number of cases to return
+   * @return list of cases ordered by creation time ascending
+   */
+  List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final Optional<String> excludedCaseNumbersCsv,
+                                            final int maxResults) {
     // TODO
-    return true;
+    return ImmutableList.of();
+  }
+
+  /**
+   * Find clients
+   *
+   * @param createdOnOrAfter find clients created on or after this time
+   * @param excludedClientIdsCsv comma separated list of client ids to exclude from results
+   * @param maxResults maximum number of clients to return
+   * @return list of clients ordered by creation time ascending
+   */
+  List<Case> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final Optional<String> excludedClientIdsCsv,
+                                              final int maxResults) {
+    // TODO
+    return ImmutableList.of();
   }
 
   boolean canQueryDb() {
@@ -52,33 +76,12 @@ public class PatrawinDao {
     }
   }
 
-  List<Case> findCasesOrderedById(final long startIdExclusive, final int maxResults) {
+  boolean hasExpectedSchema() {
     // TODO
-    return ImmutableList.of();
-  }
-
-  List<Case> findClientsOrderedById(final long startIdExclusive, final int maxResults) {
-    // TODO
-    return ImmutableList.of();
+    return true;
   }
 
   private Query query() {
     return fluentJdbc.query();
-  }
-
-  /**
-   * Models a Patrawin case.
-   */
-  @Value.Immutable
-  public interface Case {
-    // TODO
-  }
-
-  /**
-   * Models a Patrawin client.
-   */
-  @Value.Immutable
-  public interface Client {
-    // TODO
   }
 }

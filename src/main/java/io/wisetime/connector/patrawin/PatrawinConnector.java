@@ -4,6 +4,7 @@
 
 package io.wisetime.connector.patrawin;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 
@@ -12,10 +13,8 @@ import org.slf4j.LoggerFactory;
 
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
-import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.integrate.WiseTimeConnector;
-import io.wisetime.connector.template.TemplateFormatter;
 import io.wisetime.generated.connect.TimeGroup;
 import spark.Request;
 
@@ -27,10 +26,8 @@ import spark.Request;
 public class PatrawinConnector implements WiseTimeConnector {
 
   private static final Logger log = LoggerFactory.getLogger(PatrawinConnector.class);
-
   private ApiClient apiClient;
-  private ConnectorStore connectorStore;
-  private TemplateFormatter templateFormatter;
+  private SyncStore syncStore;
 
   @Inject
   private PatrawinDao patrawinDao;
@@ -41,8 +38,7 @@ public class PatrawinConnector implements WiseTimeConnector {
         "Patrawin database schema is unsupported by this connector");
 
     this.apiClient = connectorModule.getApiClient();
-    this.connectorStore = connectorModule.getConnectorStore();
-    this.templateFormatter = connectorModule.getTemplateFormatter();
+    this.syncStore = new SyncStore(connectorModule.getConnectorStore());
   }
 
   @Override
@@ -59,5 +55,10 @@ public class PatrawinConnector implements WiseTimeConnector {
   @Override
   public boolean isConnectorHealthy() {
     return patrawinDao.canQueryDb();
+  }
+
+  @VisibleForTesting
+  void setSyncStore(final SyncStore syncStore) {
+    this.syncStore = syncStore;
   }
 }
