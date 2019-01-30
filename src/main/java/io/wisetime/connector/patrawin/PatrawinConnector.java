@@ -164,7 +164,7 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   @VisibleForTesting
-  static <T>String printLast(List<T> items) {
+  static <T> String printLast(List<T> items) {
     if (items.size() == 0) {
       return "None yet";
     }

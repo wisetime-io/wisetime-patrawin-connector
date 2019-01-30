@@ -20,7 +20,9 @@ import io.wisetime.generated.connect.UpsertTagRequest;
 @Value.Immutable
 public interface Case {
   String getCaseNumber();
+
   String getDescription();
+
   Instant getCreationTime();
 
   default UpsertTagRequest toUpsertTagRequest(final String path) {
