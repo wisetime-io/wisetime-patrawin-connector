@@ -6,7 +6,6 @@ package io.wisetime.connector.patrawin;
 
 import com.github.javafaker.Faker;
 
-import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.function.Supplier;
@@ -24,19 +23,14 @@ public class RandomDataGenerator {
   private static final String TAG_PATH = format("/%s/%s/", FAKER.lorem().word(), FAKER.lorem().word());
 
   Case randomCase() {
-    return ImmutableCase
-        .builder()
-        .caseNumber(FAKER.bothify("??####", true))
-        .description(FAKER.lorem().characters(12, 30))
-        .creationTime(Instant.now())
-        .build();
+    return randomCase(ZonedDateTime.now());
   }
 
   public Case randomCase(ZonedDateTime createdTime) {
     return ImmutableCase.builder()
         .caseNumber(FAKER.bothify("??####", true))
         .description(FAKER.lorem().characters(12, 30))
-        .creationTime(createdTime == null ? Instant.now() : createdTime.toInstant())
+        .creationTime(createdTime.toInstant())
         .build();
   }
 
@@ -45,19 +39,14 @@ public class RandomDataGenerator {
   }
 
   Client randomClient() {
-    return ImmutableClient
-        .builder()
-        .clientId(FAKER.bothify("??###", true))
-        .alias(FAKER.company().name())
-        .creationTime(Instant.now())
-        .build();
+    return randomClient(ZonedDateTime.now());
   }
 
   public Client randomClient(ZonedDateTime createdTime) {
     return ImmutableClient.builder()
         .clientId(FAKER.bothify("??###", true))
         .alias(FAKER.company().name())
-        .creationTime(createdTime == null ? Instant.now() : createdTime.toInstant())
+        .creationTime(createdTime.toInstant())
         .build();
   }
 
