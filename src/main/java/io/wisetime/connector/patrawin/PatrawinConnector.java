@@ -51,10 +51,10 @@ public class PatrawinConnector implements WiseTimeConnector {
   @Override
   public void performTagUpdate() {
     while (syncCases()) {
-      // Until completion
+      // Drain all unsynced cases
     }
     while (syncClients()) {
-      // Until completion
+      // Drain all unscyned clients
     }
   }
 

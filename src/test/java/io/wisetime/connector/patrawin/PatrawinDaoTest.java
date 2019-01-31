@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class PatrawinDaoTest {
 
-  private static FakeEntities fakeEntities = new FakeEntities();
+  private static RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
   private static MSSQLServerContainer sqlServerContainer = new MSSQLServerContainer();
   private static DateTimeFormatter dbDateTimeUtcFormatter = new DateTimeFormatterBuilder()
       .appendPattern("yyyy-MM-dd HH:mm:ss")
@@ -99,11 +99,11 @@ class PatrawinDaoTest {
   @Test
   void findCasesOrderedByCreationTime() {
     final ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
-    final Case createdNow1 = createCase(ImmutableCase.copyOf(fakeEntities.randomCase(now)).withCaseNumber("B1234"));
-    final Case createdNow2 = createCase(ImmutableCase.copyOf(fakeEntities.randomCase(now)).withCaseNumber("A1234"));
-    final Case createdYesterday = createCase(fakeEntities.randomCase(now.minusDays(1)));
-    final Case createdLastWeek = createCase(fakeEntities.randomCase(now.minusWeeks(1)));
-    final Case createdLast2Weeks = createCase(fakeEntities.randomCase(now.minusWeeks(2)));
+    final Case createdNow1 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("B1234"));
+    final Case createdNow2 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("A1234"));
+    final Case createdYesterday = createCase(randomDataGenerator.randomCase(now.minusDays(1)));
+    final Case createdLastWeek = createCase(randomDataGenerator.randomCase(now.minusWeeks(1)));
+    final Case createdLast2Weeks = createCase(randomDataGenerator.randomCase(now.minusWeeks(2)));
 
     // initial query
     final List<Case> initialClients = patrawinDao.findCasesOrderedByCreationTime(
@@ -134,11 +134,13 @@ class PatrawinDaoTest {
   @Test
   void findClientsOrderedByCreationTime() {
     final ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
-    final Client createdNow1 = createClient(ImmutableClient.copyOf(fakeEntities.randomClient(now)).withClientId("123"));
-    final Client createdNow2 = createClient(ImmutableClient.copyOf(fakeEntities.randomClient(now)).withClientId("122"));
-    final Client createdYesterday = createClient(fakeEntities.randomClient(now.minusDays(1)));
-    final Client createdLastWeek = createClient(fakeEntities.randomClient(now.minusWeeks(1)));
-    final Client createdLast2Weeks = createClient(fakeEntities.randomClient(now.minusWeeks(2)));
+    final Client createdNow1 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
+        .withClientId("123"));
+    final Client createdNow2 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
+        .withClientId("122"));
+    final Client createdYesterday = createClient(randomDataGenerator.randomClient(now.minusDays(1)));
+    final Client createdLastWeek = createClient(randomDataGenerator.randomClient(now.minusWeeks(1)));
+    final Client createdLast2Weeks = createClient(randomDataGenerator.randomClient(now.minusWeeks(2)));
 
     // initial query
     final List<Client> initialClients = patrawinDao.findClientsOrderedByCreationTime(
