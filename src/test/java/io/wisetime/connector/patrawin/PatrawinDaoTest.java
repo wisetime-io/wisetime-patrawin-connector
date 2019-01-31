@@ -166,6 +166,13 @@ class PatrawinDaoTest {
         .containsExactly(createdNow1);
   }
 
+  @Test
+  void hasExpectedSchema() {
+    assertThat(patrawinDao.hasExpectedSchema())
+        .as("Flyway should freshly applied the expected Patrawin DB schema")
+        .isTrue();
+  }
+
   private Case createCase(Case patrawinCase) {
     fluentJdbc.query()
         .update("INSERT INTO ARENDE_1 (Arendenr, Slagord, Skapatdat, Rowguid, Officeid, Electronic_file, " +

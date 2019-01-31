@@ -4,8 +4,11 @@
 
 package io.wisetime.connector.patrawin;
 
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.codejargon.fluentjdbc.api.FluentJdbc;
 import org.codejargon.fluentjdbc.api.FluentJdbcBuilder;
 import org.codejargon.fluentjdbc.api.mapper.Mappers;
@@ -20,8 +23,14 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.sql.DataSource;
+
+import static java.util.stream.Collectors.groupingBy;
+import static java.util.stream.Collectors.mapping;
+import static java.util.stream.Collectors.toList;
 
 /**
  * Simple, unsophisticated access to the Patrawin database.
@@ -124,8 +133,30 @@ public class PatrawinDao {
   }
 
   boolean hasExpectedSchema() {
-    // TODO
-    return true;
+    log.info("Checking if Patrawin DB has correct schema...");
+
+    final Map<String, Set<String>> requiredTablesAndColumnsMap = Maps.newHashMap();
+    requiredTablesAndColumnsMap.put(
+        "arende_1",
+        ImmutableSet.of("arendenr", "slagord", "skapatdat")
+    );
+    requiredTablesAndColumnsMap.put(
+        "kund_24",
+        ImmutableSet.of("kundnr", "kortnamnkund", "skapatdat")
+    );
+
+    final Map<String, List<String>> actualTablesAndColumnsMap = query().databaseInspection()
+        .selectFromMetaData(meta -> meta.getColumns(null, null, null, null))
+        .listResult(rs -> ImmutablePair.of(rs.getString("TABLE_NAME"), rs.getString("COLUMN_NAME")))
+        .stream()
+        .filter(pair -> requiredTablesAndColumnsMap.containsKey(pair.getKey().toLowerCase()))
+        // transform to lower case to ensure we are comparing the same case
+        .collect(groupingBy(pair -> pair.getKey().toLowerCase(), mapping(pair -> pair.getValue().toLowerCase(), toList())));
+
+    return requiredTablesAndColumnsMap.entrySet().stream()
+        .allMatch(entry -> actualTablesAndColumnsMap.containsKey(entry.getKey()) &&
+            actualTablesAndColumnsMap.get(entry.getKey()).containsAll(entry.getValue())
+        );
   }
 
   private Query query() {
