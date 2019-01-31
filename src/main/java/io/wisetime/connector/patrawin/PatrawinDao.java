@@ -4,7 +4,6 @@
 
 package io.wisetime.connector.patrawin;
 
-import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 
 import org.codejargon.fluentjdbc.api.FluentJdbc;
@@ -48,8 +47,18 @@ public class PatrawinDao {
    */
   List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedCaseNumbers,
                                             final int maxResults) {
-    // TODO
-    return ImmutableList.of();
+    return query().select("SELECT TOP (:maxResults) Arendenr AS CaseNum, Slagord AS Description, Skapatdat AS CreatedDate " +
+        "FROM ARENDE_1 WHERE Skapatdat >= :createdOnOrAfter AND Arendenr NOT IN :excludedCaseNumbers " +
+        "ORDER BY Skapatdat ASC")
+        .params("maxResults", maxResults)
+        .params("createdOnOrAfter", createdOnOrAfter)
+        .params("excludedCaseNumbers", excludedCaseNumbers)
+        .listResult(rs -> ImmutableCase.builder()
+            .caseNumber(rs.getString(1))
+            .description(rs.getString(2))
+            .creationTime(rs.getDate(3).toInstant())
+            .build()
+        );
   }
 
   /**
@@ -62,8 +71,17 @@ public class PatrawinDao {
    */
   List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
                                               final int maxResults) {
-    // TODO
-    return ImmutableList.of();
+    return query().select("SELECT TOP (:maxResults) Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate " +
+        "FROM KUND_24 WHERE Skapatdat >= :createdOnOrAfter AND Kundnr NOT IN (:excludedClientIds) ORDER BY Skapatdat ASC")
+        .params("maxResults", maxResults)
+        .params("createdOnOrAfter", createdOnOrAfter)
+        .params("excludedClientIds", excludedClientIds)
+        .listResult(rs -> ImmutableClient.builder()
+            .clientId(rs.getString(1))
+            .alias(rs.getString(2))
+            .creationTime(rs.getDate(3).toInstant())
+            .build()
+        );
   }
 
   boolean canQueryDb() {
