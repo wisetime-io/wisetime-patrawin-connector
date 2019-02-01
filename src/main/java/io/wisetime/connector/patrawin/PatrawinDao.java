@@ -38,13 +38,14 @@ import static java.util.stream.Collectors.toList;
  */
 public class PatrawinDao {
 
-  private final Logger log = LoggerFactory.getLogger(PatrawinDao.class);
-  private final FluentJdbc fluentJdbc;
+  private static final Logger log = LoggerFactory.getLogger(PatrawinDao.class);
 
-  private static DateTimeFormatter dbDateTimeFormatter = new DateTimeFormatterBuilder()
+  private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
       .appendPattern("yyyy-MM-dd HH:mm:ss")
       .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 3, true)
       .toFormatter();
+
+  private final FluentJdbc fluentJdbc;
 
   @Inject
   PatrawinDao(DataSource dataSource) {
@@ -76,14 +77,14 @@ public class PatrawinDao {
 
     SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", dbDateTimeFormatter.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", DATE_TIME_FORMATTER.format(createdOnOrAfter));
     if (!excludedCaseNumbers.isEmpty()) {
       selectQuery = selectQuery.namedParam("excludedCaseNumbers", excludedCaseNumbers);
     }
     return selectQuery.listResult(rs -> ImmutableCase.builder()
             .caseNumber(rs.getString(1))
             .description(rs.getString(2))
-            .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
+            .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER))
             .build()
     );
   }
@@ -109,14 +110,14 @@ public class PatrawinDao {
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", dbDateTimeFormatter.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", DATE_TIME_FORMATTER.format(createdOnOrAfter));
     if (!excludedClientIds.isEmpty()) {
       selectQuery.namedParam("excludedClientIds", excludedClientIds);
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
         .clientId(rs.getString(1))
         .alias(rs.getString(2))
-        .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
+        .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER))
         .build()
     );
   }
