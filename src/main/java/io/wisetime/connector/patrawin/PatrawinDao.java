@@ -5,7 +5,6 @@
 package io.wisetime.connector.patrawin;
 
 import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Maps;
 import com.google.inject.Inject;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -22,6 +21,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -74,7 +74,7 @@ public class PatrawinDao {
     if (!excludedCaseNumbers.isEmpty()) {
       query.append(" AND Arendenr NOT IN (:excludedCaseNumbers)");
     }
-    query.append(" ORDER BY Skapatdat, Arendenr");
+    query.append(" ORDER BY CreatedDate, CaseNum");
 
     SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
@@ -99,7 +99,7 @@ public class PatrawinDao {
    * @return list of clients ordered by creation time ascending
    */
   List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
-                                              final int maxResults) {
+                                                final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT TOP (:maxResults) Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate " +
             "FROM KUND_24 WHERE Skapatdat >= :createdOnOrAfter"
@@ -107,13 +107,13 @@ public class PatrawinDao {
     if (!excludedClientIds.isEmpty()) {
       query.append(" AND Kundnr NOT IN (:excludedClientIds)");
     }
-    query.append(" ORDER BY Skapatdat, Kundnr");
+    query.append(" ORDER BY CreatedDate, ClientId");
 
-    SelectQuery selectQuery = query().select(query.toString())
+    final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
         .namedParam("createdOnOrAfter", dbDateTimeUtcFormatter.format(createdOnOrAfter));
     if (!excludedClientIds.isEmpty()) {
-      selectQuery = selectQuery.namedParam("excludedClientIds", excludedClientIds);
+      selectQuery.namedParam("excludedClientIds", excludedClientIds);
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
         .clientId(rs.getString(1))
@@ -135,7 +135,7 @@ public class PatrawinDao {
   boolean hasExpectedSchema() {
     log.info("Checking if Patrawin DB has correct schema...");
 
-    final Map<String, Set<String>> requiredTablesAndColumnsMap = Maps.newHashMap();
+    final Map<String, Set<String>> requiredTablesAndColumnsMap = new HashMap<>();
     requiredTablesAndColumnsMap.put(
         "arende_1",
         ImmutableSet.of("arendenr", "slagord", "skapatdat")
