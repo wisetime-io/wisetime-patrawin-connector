@@ -22,9 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MSSQLServerContainer;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -47,11 +46,10 @@ class PatrawinDaoTest {
 
   private static RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
   private static MSSQLServerContainer sqlServerContainer = new MSSQLServerContainer();
-  private static DateTimeFormatter dbDateTimeUtcFormatter = new DateTimeFormatterBuilder()
+  private static DateTimeFormatter dbDateTimeFormatter = new DateTimeFormatterBuilder()
       .appendPattern("yyyy-MM-dd HH:mm:ss")
       .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 3, true)
-      .toFormatter()
-      .withZone(ZoneOffset.UTC);
+      .toFormatter();
 
   private static PatrawinDao patrawinDao;
   private static FluentJdbc fluentJdbc;
@@ -98,7 +96,7 @@ class PatrawinDaoTest {
 
   @Test
   void findCasesOrderedByCreationTime() {
-    final ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+    final LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
     final Case createdNow1 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("B1234"));
     final Case createdNow2 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("A1234"));
     final Case createdYesterday = createCase(randomDataGenerator.randomCase(now.minusDays(1)));
@@ -107,9 +105,7 @@ class PatrawinDaoTest {
 
     // initial query
     final List<Case> initialClients = patrawinDao.findCasesOrderedByCreationTime(
-        now.minusWeeks(1).toInstant(),
-        Lists.newArrayList(),
-        3
+        now.minusWeeks(1), Lists.newArrayList(), 3
     );
 
     assertThat(initialClients)
@@ -121,9 +117,7 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Case> nextCases = patrawinDao.findCasesOrderedByCreationTime(
-        now.toInstant(),
-        Lists.newArrayList(createdNow2.getCaseNumber()),
-        3
+        now, Lists.newArrayList(createdNow2.getCaseNumber()), 3
     );
 
     assertThat(nextCases)
@@ -133,7 +127,7 @@ class PatrawinDaoTest {
 
   @Test
   void findClientsOrderedByCreationTime() {
-    final ZonedDateTime now = ZonedDateTime.now(ZoneOffset.UTC);
+    final LocalDateTime now = LocalDateTime.now();
     final Client createdNow1 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
         .withClientId("123"));
     final Client createdNow2 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
@@ -144,9 +138,7 @@ class PatrawinDaoTest {
 
     // initial query
     final List<Client> initialClients = patrawinDao.findClientsOrderedByCreationTime(
-        now.minusWeeks(1).toInstant(),
-        Lists.newArrayList(),
-        3
+        now.minusWeeks(1), Lists.newArrayList(), 3
     );
 
     assertThat(initialClients)
@@ -158,9 +150,7 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Client> nextClients = patrawinDao.findClientsOrderedByCreationTime(
-        now.toInstant(),
-        Lists.newArrayList(createdNow2.getClientId()),
-        3
+        now, Lists.newArrayList(createdNow2.getClientId()), 3
     );
 
     assertThat(nextClients)
@@ -182,7 +172,7 @@ class PatrawinDaoTest {
         .params(
             patrawinCase.getCaseNumber(),
             patrawinCase.getDescription(),
-            dbDateTimeUtcFormatter.format(patrawinCase.getCreationTime()))
+            dbDateTimeFormatter.format(patrawinCase.getCreationTime()))
         .run();
 
     // MSSQL's DATETIME are rounded to increments of .000, .003 or .007 seconds
@@ -194,7 +184,7 @@ class PatrawinDaoTest {
         .singleResult(rs -> ImmutableCase.builder()
             .caseNumber(rs.getString(1))
             .description(rs.getString(2))
-            .creationTime(Instant.from(dbDateTimeUtcFormatter.parse(rs.getString(3))))
+            .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
             .build());
   }
 
@@ -207,7 +197,7 @@ class PatrawinDaoTest {
         .params(
             client.getClientId(),
             client.getAlias(),
-            dbDateTimeUtcFormatter.format(client.getCreationTime()))
+            dbDateTimeFormatter.format(client.getCreationTime()))
         .run();
 
     // MSSQL's DATETIME are rounded to increments of .000, .003 or .007 seconds
@@ -219,7 +209,7 @@ class PatrawinDaoTest {
         .singleResult(rs -> ImmutableClient.builder()
             .clientId(rs.getString(1))
             .alias(rs.getString(2))
-            .creationTime(Instant.from(dbDateTimeUtcFormatter.parse(rs.getString(3))))
+            .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
             .build());
   }
 

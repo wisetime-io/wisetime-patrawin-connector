@@ -6,7 +6,7 @@ package io.wisetime.connector.patrawin;
 
 import com.google.common.collect.ImmutableList;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,11 +35,11 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast case that was synced
    */
-  Instant getLastSyncedCaseCreationTime() {
+  LocalDateTime getLastSyncedCaseCreationTime() {
     return connectorStore
-        .getLong(LAST_SYNCED_CASE_CREATION_TIME_KEY)
-        .map(Instant::ofEpochMilli)
-        .orElse(Instant.EPOCH);
+        .getString(LAST_SYNCED_CASE_CREATION_TIME_KEY)
+        .map(LocalDateTime::parse)
+        .orElse(LocalDateTime.MIN);
   }
 
   /**
@@ -55,11 +55,11 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast client that was synced
    */
-  Instant getLastSyncedClientCreationTime() {
+  LocalDateTime getLastSyncedClientCreationTime() {
     return connectorStore
-        .getLong(LAST_SYNCED_CLIENT_CREATION_TIME_KEY)
-        .map(Instant::ofEpochMilli)
-        .orElse(Instant.EPOCH);
+        .getString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY)
+        .map(LocalDateTime::parse)
+        .orElse(LocalDateTime.MIN);
   }
 
   /**
@@ -77,8 +77,8 @@ public class SyncStore {
    * @param lastSyncedCases List of cases, with most recently created printLast
    */
   void setLastSyncedCases(final List<Case> lastSyncedCases) {
-    connectorStore.putLong(LAST_SYNCED_CASE_CREATION_TIME_KEY,
-        lastSyncedCases.get(lastSyncedCases.size() - 1).getCreationTime().toEpochMilli());
+    connectorStore.putString(LAST_SYNCED_CASE_CREATION_TIME_KEY,
+        lastSyncedCases.get(lastSyncedCases.size() - 1).getCreationTime().toString());
     connectorStore.putString(LAST_SYNCED_CASE_NUMBERS_KEY,
         lastSyncedCases.stream().map(Case::getCaseNumber).collect(Collectors.joining(DELIMITER)));
   }
@@ -88,8 +88,8 @@ public class SyncStore {
    * @param lastSyncedClients List of clients, with the most recently created printLast
    */
   void setLastSyncedClients(final List<Client> lastSyncedClients) {
-    connectorStore.putLong(LAST_SYNCED_CLIENT_CREATION_TIME_KEY,
-        lastSyncedClients.get(lastSyncedClients.size() - 1).getCreationTime().toEpochMilli());
+    connectorStore.putString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY,
+        lastSyncedClients.get(lastSyncedClients.size() - 1).getCreationTime().toString());
     connectorStore.putString(LAST_SYNCED_CLIENT_IDS_KEY,
         lastSyncedClients.stream().map(Client::getClientId).collect(Collectors.joining(DELIMITER)));
   }

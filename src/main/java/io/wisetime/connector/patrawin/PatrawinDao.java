@@ -16,8 +16,7 @@ import org.codejargon.fluentjdbc.api.query.SelectQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
-import java.time.ZoneOffset;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -42,11 +41,10 @@ public class PatrawinDao {
   private final Logger log = LoggerFactory.getLogger(PatrawinDao.class);
   private final FluentJdbc fluentJdbc;
 
-  private static DateTimeFormatter dbDateTimeUtcFormatter = new DateTimeFormatterBuilder()
+  private static DateTimeFormatter dbDateTimeFormatter = new DateTimeFormatterBuilder()
       .appendPattern("yyyy-MM-dd HH:mm:ss")
       .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 3, true)
-      .toFormatter()
-      .withZone(ZoneOffset.UTC); // TODO: Decide what timezone should be use
+      .toFormatter();
 
   @Inject
   PatrawinDao(DataSource dataSource) {
@@ -65,7 +63,7 @@ public class PatrawinDao {
    * @param maxResults maximum number of cases to return
    * @return list of cases ordered by creation time ascending
    */
-  List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedCaseNumbers,
+  List<Case> findCasesOrderedByCreationTime(final LocalDateTime createdOnOrAfter, final List<String> excludedCaseNumbers,
                                             final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT TOP (:maxResults) Arendenr AS CaseNum, Slagord AS Description, Skapatdat AS CreatedDate " +
@@ -78,14 +76,14 @@ public class PatrawinDao {
 
     SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", dbDateTimeUtcFormatter.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", dbDateTimeFormatter.format(createdOnOrAfter));
     if (!excludedCaseNumbers.isEmpty()) {
       selectQuery = selectQuery.namedParam("excludedCaseNumbers", excludedCaseNumbers);
     }
     return selectQuery.listResult(rs -> ImmutableCase.builder()
             .caseNumber(rs.getString(1))
             .description(rs.getString(2))
-            .creationTime(Instant.from(dbDateTimeUtcFormatter.parse(rs.getString(3))))
+            .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
             .build()
     );
   }
@@ -98,7 +96,7 @@ public class PatrawinDao {
    * @param maxResults maximum number of clients to return
    * @return list of clients ordered by creation time ascending
    */
-  List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
+  List<Client> findClientsOrderedByCreationTime(final LocalDateTime createdOnOrAfter, final List<String> excludedClientIds,
                                                 final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT TOP (:maxResults) Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate " +
@@ -111,14 +109,14 @@ public class PatrawinDao {
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", dbDateTimeUtcFormatter.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", dbDateTimeFormatter.format(createdOnOrAfter));
     if (!excludedClientIds.isEmpty()) {
       selectQuery.namedParam("excludedClientIds", excludedClientIds);
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
         .clientId(rs.getString(1))
         .alias(rs.getString(2))
-        .creationTime(Instant.from(dbDateTimeUtcFormatter.parse(rs.getString(3))))
+        .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
         .build()
     );
   }
