@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -76,7 +76,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncCases() {
-    final Instant lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
+    final LocalDateTime lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
     final List<String> lastPreviouslySyncedCaseNumbers = syncStore.getLastSyncedCaseNumbers();
     final List<Case> cases = patrawinDao.findCasesOrderedByCreationTime(
         lastPreviouslySyncedCaseCreationTime,
@@ -114,7 +114,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncClients() {
-    final Instant lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
+    final LocalDateTime lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
     final List<String> lastPreviouslySyncedClientIds = syncStore.getLastSyncedClientIds();
     final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
         lastPreviouslySyncedClientCreationTime,
@@ -164,7 +164,7 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   @VisibleForTesting
-  static <T>String printLast(List<T> items) {
+  static <T> String printLast(List<T> items) {
     if (items.size() == 0) {
       return "None yet";
     }

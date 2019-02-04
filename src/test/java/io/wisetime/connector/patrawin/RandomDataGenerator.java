@@ -6,7 +6,7 @@ package io.wisetime.connector.patrawin;
 
 import com.github.javafaker.Faker;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
@@ -23,11 +23,14 @@ public class RandomDataGenerator {
   private static final String TAG_PATH = format("/%s/%s/", FAKER.lorem().word(), FAKER.lorem().word());
 
   Case randomCase() {
-    return ImmutableCase
-        .builder()
+    return randomCase(LocalDateTime.now());
+  }
+
+  public Case randomCase(LocalDateTime createdTime) {
+    return ImmutableCase.builder()
         .caseNumber(FAKER.bothify("??####", true))
         .description(FAKER.lorem().characters(12, 30))
-        .creationTime(Instant.now())
+        .creationTime(createdTime)
         .build();
   }
 
@@ -36,11 +39,14 @@ public class RandomDataGenerator {
   }
 
   Client randomClient() {
-    return ImmutableClient
-        .builder()
+    return randomClient(LocalDateTime.now());
+  }
+
+  public Client randomClient(LocalDateTime createdTime) {
+    return ImmutableClient.builder()
         .clientId(FAKER.bothify("??###", true))
         .alias(FAKER.company().name())
-        .creationTime(Instant.now())
+        .creationTime(createdTime)
         .build();
   }
 
