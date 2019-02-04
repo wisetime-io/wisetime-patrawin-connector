@@ -16,7 +16,9 @@ import org.codejargon.fluentjdbc.api.query.SelectQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
@@ -64,7 +66,7 @@ public class PatrawinDao {
    * @param maxResults maximum number of cases to return
    * @return list of cases ordered by creation time ascending
    */
-  List<Case> findCasesOrderedByCreationTime(final LocalDateTime createdOnOrAfter, final List<String> excludedCaseNumbers,
+  List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedCaseNumbers,
                                             final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT TOP (:maxResults) Arendenr AS CaseNum, Slagord AS Description, Skapatdat AS CreatedDate " +
@@ -84,7 +86,7 @@ public class PatrawinDao {
     return selectQuery.listResult(rs -> ImmutableCase.builder()
             .caseNumber(rs.getString(1))
             .description(rs.getString(2))
-            .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER))
+            .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER).toInstant(ZoneOffset.UTC))
             .build()
     );
   }
@@ -97,7 +99,7 @@ public class PatrawinDao {
    * @param maxResults maximum number of clients to return
    * @return list of clients ordered by creation time ascending
    */
-  List<Client> findClientsOrderedByCreationTime(final LocalDateTime createdOnOrAfter, final List<String> excludedClientIds,
+  List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
                                                 final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT TOP (:maxResults) Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate " +
@@ -117,7 +119,7 @@ public class PatrawinDao {
     return selectQuery.listResult(rs -> ImmutableClient.builder()
         .clientId(rs.getString(1))
         .alias(rs.getString(2))
-        .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER))
+        .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER).toInstant(ZoneOffset.UTC))
         .build()
     );
   }

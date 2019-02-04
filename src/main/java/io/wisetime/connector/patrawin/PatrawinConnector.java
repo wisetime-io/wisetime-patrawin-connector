@@ -12,18 +12,24 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
+import io.wisetime.connector.config.ConnectorConfigKey;
 import io.wisetime.connector.config.RuntimeConfig;
+import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.integrate.WiseTimeConnector;
 import io.wisetime.generated.connect.TimeGroup;
 import io.wisetime.generated.connect.UpsertTagRequest;
 import spark.Request;
+
+import static io.wisetime.connector.utils.ActivityTimeCalculator.startTime;
 
 /**
  * WiseTime Connector implementation for Patrawin
@@ -45,7 +51,11 @@ public class PatrawinConnector implements WiseTimeConnector {
         "Patrawin database schema is unsupported by this connector");
 
     this.apiClient = connectorModule.getApiClient();
-    this.syncStore = new SyncStore(connectorModule.getConnectorStore());
+    this.syncStore = getSyncStore(connectorModule.getConnectorStore());
+  }
+
+  SyncStore getSyncStore(ConnectorStore connectorStore) {
+    return new SyncStore(connectorStore);
   }
 
   @Override
@@ -59,9 +69,93 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   @Override
-  public PostResult postTime(Request request, TimeGroup userPostedTime) {
-    // TODO
-    return null;
+  public PostResult postTime(Request request, TimeGroup timeGroup) {
+    log.info("Posted time received for {}: {}",
+        timeGroup.getUser().getExternalId(),
+        timeGroup.toString());
+
+    Optional<String> callerKey = RuntimeConfig.getString(ConnectorConfigKey.CALLER_KEY);
+    if (callerKey.isPresent() && !callerKey.get().equals(timeGroup.getCallerKey())) {
+      return PostResult.PERMANENT_FAILURE
+          .withMessage("Invalid caller key in post time webhook call");
+    }
+
+    if (timeGroup.getTags().isEmpty()) {
+      return PostResult.SUCCESS
+          .withMessage("Time group has no tags. There is nothing to post to Patrawin.");
+    }
+
+    final Optional<LocalDateTime> activityStartTime = startTime(timeGroup);
+    if (!activityStartTime.isPresent()) {
+      return PostResult.PERMANENT_FAILURE
+          .withMessage("Cannot post time group with no time rows");
+    }
+
+    // TODO: add patrawinDao.findUser()
+    // TODO: how to write / update time (stored procedure)
+    // TODO: tag matches case and client
+    // TODO: patrawinDao#findCaseByTagName, findClientByTagName
+    /*final Optional<String> author = patrawinDao.findUsername(timeGroup.getUser().getExternalId());
+    if (!author.isPresent()) {
+      return PostResult.PERMANENT_FAILURE
+          .withMessage("User does not exist in Patrawin");
+    }
+
+    final Function<Tag, Optional<Case>> findCaseOrClient = tag -> {
+      final Optional<Case> foundCase = patrawinDao.findCaseByTagName(tag.getName());
+      final Optional<Client> foundClient = patrawinDao.findClientByTagName(tag.getName());
+      if (!foundCase.isPresent() && !foundClient.isPresent()) {
+        log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
+      }
+      return foundCase;
+    };
+
+    final long workedTime = DurationCalculator
+        .of(timeGroup)
+        .calculate()
+        .getPerTagDuration();
+
+    final Function<Case, Case> updateCaseTimeSpent = aCase -> {
+      final long updatedTimeSpent = aCase.getTimeSpent() + workedTime;
+      patrawinDao.updateCaseTimeSpent(aCase.getId(), updatedTimeSpent);
+      return aCase;
+    };
+
+    final Function<Case, Case> createWorklog = forCase -> {
+      final String messageBody = templateFormatter.format(timeGroup);
+      final Worklog worklog = Worklog
+          .builder()
+          .caseId(forCase.getId())
+          .author(author.get())
+          .body(messageBody)
+          .created(activityStartTime.get())
+          .timeWorked(workedTime)
+          .build();
+
+      patrawinDao.createWorklog(worklog);
+      return forCase;
+    };*/
+
+    try {
+      /*patrawinDao.asTransaction(() ->
+          timeGroup.getTags()
+              .stream()
+              .map(findCaseOrClient)
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .map(updateCaseTimeSpent)
+              .map(createWorklog)
+              .forEach(aCase ->
+                  log.info("Posted time to Patrawin case / client {} on behalf of {}", aCase.getKey(), author.get())
+              )
+      );*/
+    } catch (RuntimeException e) {
+      log.error(e.getMessage(), e);
+      return PostResult.TRANSIENT_FAILURE
+          .withError(e)
+          .withMessage("There was an error posting time to the Patrawin database");
+    }
+    return PostResult.SUCCESS;
   }
 
   @Override
@@ -76,7 +170,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncCases() {
-    final LocalDateTime lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
+    final Instant lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
     final List<String> lastPreviouslySyncedCaseNumbers = syncStore.getLastSyncedCaseNumbers();
     final List<Case> cases = patrawinDao.findCasesOrderedByCreationTime(
         lastPreviouslySyncedCaseCreationTime,
@@ -114,7 +208,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncClients() {
-    final LocalDateTime lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
+    final Instant lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
     final List<String> lastPreviouslySyncedClientIds = syncStore.getLastSyncedClientIds();
     final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
         lastPreviouslySyncedClientCreationTime,

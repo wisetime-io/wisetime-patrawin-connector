@@ -6,7 +6,7 @@ package io.wisetime.connector.patrawin;
 
 import com.google.common.collect.ImmutableList;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -35,11 +35,11 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast case that was synced
    */
-  LocalDateTime getLastSyncedCaseCreationTime() {
+  Instant getLastSyncedCaseCreationTime() {
     return connectorStore
-        .getString(LAST_SYNCED_CASE_CREATION_TIME_KEY)
-        .map(LocalDateTime::parse)
-        .orElse(LocalDateTime.MIN);
+        .getLong(LAST_SYNCED_CASE_CREATION_TIME_KEY)
+        .map(Instant::ofEpochMilli)
+        .orElse(Instant.EPOCH);
   }
 
   /**
@@ -55,11 +55,11 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast client that was synced
    */
-  LocalDateTime getLastSyncedClientCreationTime() {
+  Instant getLastSyncedClientCreationTime() {
     return connectorStore
-        .getString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY)
-        .map(LocalDateTime::parse)
-        .orElse(LocalDateTime.MIN);
+        .getLong(LAST_SYNCED_CLIENT_CREATION_TIME_KEY)
+        .map(Instant::ofEpochMilli)
+        .orElse(Instant.EPOCH);
   }
 
   /**
@@ -74,23 +74,31 @@ public class SyncStore {
 
   /**
    * Remember the printLast synced case references
+   *
    * @param lastSyncedCases List of cases, with most recently created printLast
    */
+  @SuppressWarnings("Duplicates")
   void setLastSyncedCases(final List<Case> lastSyncedCases) {
-    connectorStore.putString(LAST_SYNCED_CASE_CREATION_TIME_KEY,
-        lastSyncedCases.get(lastSyncedCases.size() - 1).getCreationTime().toString());
-    connectorStore.putString(LAST_SYNCED_CASE_NUMBERS_KEY,
-        lastSyncedCases.stream().map(Case::getCaseNumber).collect(Collectors.joining(DELIMITER)));
+    Instant lastCaseCreationTime = lastSyncedCases.get(lastSyncedCases.size() - 1).getCreationTime();
+    connectorStore.putLong(LAST_SYNCED_CASE_CREATION_TIME_KEY, lastCaseCreationTime.toEpochMilli());
+    connectorStore.putString(LAST_SYNCED_CASE_NUMBERS_KEY, lastSyncedCases.stream()
+        .filter(lastSyncedCase -> lastSyncedCase.getCreationTime().equals(lastCaseCreationTime))
+        .map(Case::getCaseNumber)
+        .collect(Collectors.joining(DELIMITER)));
   }
 
   /**
    * Remember the printLast synced client references
+   *
    * @param lastSyncedClients List of clients, with the most recently created printLast
    */
+  @SuppressWarnings("Duplicates")
   void setLastSyncedClients(final List<Client> lastSyncedClients) {
-    connectorStore.putString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY,
-        lastSyncedClients.get(lastSyncedClients.size() - 1).getCreationTime().toString());
-    connectorStore.putString(LAST_SYNCED_CLIENT_IDS_KEY,
-        lastSyncedClients.stream().map(Client::getClientId).collect(Collectors.joining(DELIMITER)));
+    Instant lastClientCreationTime = lastSyncedClients.get(lastSyncedClients.size() - 1).getCreationTime();
+    connectorStore.putLong(LAST_SYNCED_CLIENT_CREATION_TIME_KEY, lastClientCreationTime.toEpochMilli());
+    connectorStore.putString(LAST_SYNCED_CLIENT_IDS_KEY, lastSyncedClients.stream()
+        .filter(lastSyncedClient -> lastSyncedClient.getCreationTime().equals(lastClientCreationTime))
+        .map(Client::getClientId)
+        .collect(Collectors.joining(DELIMITER)));
   }
 }

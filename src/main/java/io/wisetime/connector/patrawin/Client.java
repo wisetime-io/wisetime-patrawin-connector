@@ -8,7 +8,7 @@ import com.google.common.collect.ImmutableList;
 
 import org.immutables.value.Value;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 import io.wisetime.generated.connect.UpsertTagRequest;
 
@@ -23,7 +23,7 @@ public interface Client {
 
   String getAlias();
 
-  LocalDateTime getCreationTime();
+  Instant getCreationTime();
 
   default UpsertTagRequest toUpsertTagRequest(final String path) {
     return new UpsertTagRequest()
