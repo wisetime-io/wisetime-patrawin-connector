@@ -55,7 +55,6 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
   private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
   private static ApiClient apiClient = mock(ApiClient.class);
-  private static ConnectorStore connectorStore = mock(ConnectorStore.class);
   private static SyncStore syncStore = mock(SyncStore.class);
 
   @BeforeAll
@@ -84,9 +83,9 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
     doReturn(syncStore)
         .when(connector)
-        .getSyncStore(any(ConnectorStore.class));
+        .createSyncStore(any(ConnectorStore.class));
 
-    connector.init(new ConnectorModule(apiClient, connectorStore));
+    connector.init(new ConnectorModule(apiClient, mock(ConnectorStore.class)));
   }
 
   @AfterAll
@@ -105,7 +104,6 @@ public class PatrawinConnectorPerformTagUpdateTest {
   void setUpTest() {
     reset(patrawinDao);
     reset(apiClient);
-    reset(connectorStore);
     reset(syncStore);
   }
 
