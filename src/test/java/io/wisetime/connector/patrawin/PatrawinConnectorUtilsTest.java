@@ -20,13 +20,11 @@ import static org.mockito.Mockito.mock;
 public class PatrawinConnectorUtilsTest {
 
   @Test
-  void createSyncStore_createsNewInstance() {
-    PatrawinDao patrawinDao = mock(PatrawinDao.class);
-    PatrawinConnector connector =
-        Guice.createInjector(binder -> binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao))
-            .getInstance(PatrawinConnector.class);
-    SyncStore syncStore1 = connector.createSyncStore(mock(ConnectorStore.class));
-    SyncStore syncStore2 = connector.createSyncStore(mock(ConnectorStore.class));
+  void createSyncStore_creates_new_instance() {
+    PatrawinConnector connector = new PatrawinConnector();
+    ConnectorStore connectorStore = mock(ConnectorStore.class);
+    SyncStore syncStore1 = connector.createSyncStore(connectorStore);
+    SyncStore syncStore2 = connector.createSyncStore(connectorStore);
     assertThat(syncStore1).isNotSameAs(syncStore2);
   }
 
