@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
 import io.wisetime.connector.config.RuntimeConfig;
+import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.integrate.WiseTimeConnector;
 import io.wisetime.generated.connect.TimeGroup;
@@ -45,7 +46,12 @@ public class PatrawinConnector implements WiseTimeConnector {
         "Patrawin database schema is unsupported by this connector");
 
     this.apiClient = connectorModule.getApiClient();
-    this.syncStore = new SyncStore(connectorModule.getConnectorStore());
+    this.syncStore = createSyncStore(connectorModule.getConnectorStore());
+  }
+
+  @VisibleForTesting
+  SyncStore createSyncStore(ConnectorStore connectorStore) {
+    return new SyncStore(connectorStore);
   }
 
   @Override
@@ -67,11 +73,6 @@ public class PatrawinConnector implements WiseTimeConnector {
   @Override
   public boolean isConnectorHealthy() {
     return patrawinDao.canQueryDb();
-  }
-
-  @VisibleForTesting
-  void setSyncStore(final SyncStore syncStore) {
-    this.syncStore = syncStore;
   }
 
   @VisibleForTesting
