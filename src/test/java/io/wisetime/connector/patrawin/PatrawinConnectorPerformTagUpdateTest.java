@@ -79,6 +79,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
     reset(patrawinDao);
     reset(apiClient);
     reset(syncStore);
+    reset(connector);
   }
 
   @Test

@@ -52,10 +52,11 @@ public class PatrawinConnector implements WiseTimeConnector {
         "Patrawin database schema is unsupported by this connector");
 
     this.apiClient = connectorModule.getApiClient();
-    this.syncStore = getSyncStore(connectorModule.getConnectorStore());
+    this.syncStore = createSyncStore(connectorModule.getConnectorStore());
   }
 
-  SyncStore getSyncStore(ConnectorStore connectorStore) {
+  @VisibleForTesting
+  SyncStore createSyncStore(ConnectorStore connectorStore) {
     return new SyncStore(connectorStore);
   }
 
@@ -162,11 +163,6 @@ public class PatrawinConnector implements WiseTimeConnector {
   @Override
   public boolean isConnectorHealthy() {
     return patrawinDao.canQueryDb();
-  }
-
-  @VisibleForTesting
-  void setSyncStore(final SyncStore syncStore) {
-    this.syncStore = syncStore;
   }
 
   @VisibleForTesting
