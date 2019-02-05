@@ -35,6 +35,7 @@ import static io.wisetime.connector.utils.ActivityTimeCalculator.startTime;
  * WiseTime Connector implementation for Patrawin
  *
  * @author shane.xie@practiceinsight.io
+ * @author galya.bogdanova@m.practiceinsight.io
  */
 public class PatrawinConnector implements WiseTimeConnector {
 

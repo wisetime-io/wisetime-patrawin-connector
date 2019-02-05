@@ -17,11 +17,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -42,16 +37,13 @@ public class PatrawinDao {
 
   private static final Logger log = LoggerFactory.getLogger(PatrawinDao.class);
 
-  private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
-      .appendPattern("yyyy-MM-dd HH:mm:ss")
-      .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 3, true)
-      .toFormatter();
-
   private final FluentJdbc fluentJdbc;
+  private final MsSqlDateTimeUtils msSqlDateTimeUtils;
 
   @Inject
-  PatrawinDao(DataSource dataSource) {
-    fluentJdbc = new FluentJdbcBuilder().connectionProvider(dataSource).build();
+  PatrawinDao(DataSource dataSource, MsSqlDateTimeUtils msSqlDateTimeUtils) {
+    this.fluentJdbc = new FluentJdbcBuilder().connectionProvider(dataSource).build();
+    this.msSqlDateTimeUtils = msSqlDateTimeUtils;
   }
 
   void asTransaction(final Runnable runnable) {
@@ -61,16 +53,16 @@ public class PatrawinDao {
   /**
    * Find cases
    *
-   * @param createdOnOrAfter find cases created on or after this time
+   * @param createdOnOrAfter    find cases created on or after this time
    * @param excludedCaseNumbers list of case numbers to exclude from results
-   * @param maxResults maximum number of cases to return
+   * @param maxResults          maximum number of cases to return
    * @return list of cases ordered by creation time ascending
    */
   List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedCaseNumbers,
                                             final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT TOP (:maxResults) Arendenr AS CaseNum, Slagord AS Description, Skapatdat AS CreatedDate " +
-        "FROM ARENDE_1 WHERE Skapatdat >= :createdOnOrAfter"
+            "FROM ARENDE_1 WHERE Skapatdat >= :createdOnOrAfter"
     );
     if (!excludedCaseNumbers.isEmpty()) {
       query.append(" AND Arendenr NOT IN (:excludedCaseNumbers)");
@@ -79,24 +71,24 @@ public class PatrawinDao {
 
     SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", DATE_TIME_FORMATTER.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", msSqlDateTimeUtils.format(createdOnOrAfter));
     if (!excludedCaseNumbers.isEmpty()) {
       selectQuery = selectQuery.namedParam("excludedCaseNumbers", excludedCaseNumbers);
     }
     return selectQuery.listResult(rs -> ImmutableCase.builder()
-            .caseNumber(rs.getString(1))
-            .description(rs.getString(2))
-            .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER).toInstant(ZoneOffset.UTC))
-            .build()
+        .caseNumber(rs.getString(1))
+        .description(rs.getString(2))
+        .creationTime(msSqlDateTimeUtils.parse(rs.getString(3)))
+        .build()
     );
   }
 
   /**
    * Find clients
    *
-   * @param createdOnOrAfter find clients created on or after this time
+   * @param createdOnOrAfter  find clients created on or after this time
    * @param excludedClientIds list of client IDs to exclude from results
-   * @param maxResults maximum number of clients to return
+   * @param maxResults        maximum number of clients to return
    * @return list of clients ordered by creation time ascending
    */
   List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
@@ -112,14 +104,14 @@ public class PatrawinDao {
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", DATE_TIME_FORMATTER.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", msSqlDateTimeUtils.format(createdOnOrAfter));
     if (!excludedClientIds.isEmpty()) {
       selectQuery.namedParam("excludedClientIds", excludedClientIds);
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
         .clientId(rs.getString(1))
         .alias(rs.getString(2))
-        .creationTime(LocalDateTime.parse(rs.getString(3), DATE_TIME_FORMATTER).toInstant(ZoneOffset.UTC))
+        .creationTime(msSqlDateTimeUtils.parse(rs.getString(3)))
         .build()
     );
   }

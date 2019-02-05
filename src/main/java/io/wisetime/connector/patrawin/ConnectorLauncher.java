@@ -90,6 +90,7 @@ public class ConnectorLauncher {
       log.info("Connecting to Patrawin database at URL: {}, Username: {}", hikariConfig.getJdbcUrl(),
           hikariConfig.getUsername());
 
+      bind(MsSqlDateTimeUtils.class).toInstance(new MsSqlDateTimeUtils());
       bind(DataSource.class).toInstance(new HikariDataSource(hikariConfig));
     }
   }

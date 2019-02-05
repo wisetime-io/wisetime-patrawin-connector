@@ -44,8 +44,6 @@ public class PatrawinConnectorPostTimeTest {
 
   @BeforeAll
   static void setUp() {
-    RuntimeConfig.clearProperty(ConnectorConfigKey.CALLER_KEY);
-
     connector = Guice.createInjector(binder -> binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao))
         .getInstance(PatrawinConnector.class);
 

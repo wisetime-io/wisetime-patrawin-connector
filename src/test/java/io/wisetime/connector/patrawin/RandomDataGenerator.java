@@ -6,13 +6,11 @@ package io.wisetime.connector.patrawin;
 
 import com.github.javafaker.Faker;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-
-import static java.lang.String.format;
 
 /**
  * @author shane.xie@practiceinsigt.io
@@ -20,13 +18,12 @@ import static java.lang.String.format;
 public class RandomDataGenerator {
 
   private static final Faker FAKER = new Faker();
-  private static final String TAG_PATH = format("/%s/%s/", FAKER.lorem().word(), FAKER.lorem().word());
 
   Case randomCase() {
-    return randomCase(LocalDateTime.now());
+    return randomCase(Instant.now());
   }
 
-  public Case randomCase(LocalDateTime createdTime) {
+  public Case randomCase(Instant createdTime) {
     return ImmutableCase.builder()
         .caseNumber(FAKER.bothify("??####", true))
         .description(FAKER.lorem().characters(12, 30))
@@ -39,10 +36,10 @@ public class RandomDataGenerator {
   }
 
   Client randomClient() {
-    return randomClient(LocalDateTime.now());
+    return randomClient(Instant.now());
   }
 
-  public Client randomClient(LocalDateTime createdTime) {
+  public Client randomClient(Instant createdTime) {
     return ImmutableClient.builder()
         .clientId(FAKER.bothify("??###", true))
         .alias(FAKER.company().name())

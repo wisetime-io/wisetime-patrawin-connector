@@ -22,11 +22,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.MSSQLServerContainer;
 
-import java.time.LocalDateTime;
-import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeFormatterBuilder;
-import java.time.temporal.ChronoField;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import javax.inject.Inject;
@@ -46,13 +43,10 @@ class PatrawinDaoTest {
 
   private static RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
   private static MSSQLServerContainer sqlServerContainer = new MSSQLServerContainer();
-  private static DateTimeFormatter dbDateTimeFormatter = new DateTimeFormatterBuilder()
-      .appendPattern("yyyy-MM-dd HH:mm:ss")
-      .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 3, true)
-      .toFormatter();
 
   private static PatrawinDao patrawinDao;
   private static FluentJdbc fluentJdbc;
+  private static MsSqlDateTimeUtils msSqlDateTimeUtils;
 
   @BeforeAll
   static void setUp() {
@@ -67,6 +61,7 @@ class PatrawinDaoTest {
 
     patrawinDao = injector.getInstance(PatrawinDao.class);
     fluentJdbc = new FluentJdbcBuilder().connectionProvider(injector.getInstance(DataSource.class)).build();
+    msSqlDateTimeUtils = injector.getInstance(MsSqlDateTimeUtils.class);
 
     // Apply Inprotech and FileSite DB schema to test db
     injector.getInstance(Flyway.class).migrate();
@@ -96,16 +91,16 @@ class PatrawinDaoTest {
 
   @Test
   void findCasesOrderedByCreationTime() {
-    final LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+    final Instant now = Instant.now();
     final Case createdNow1 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("B1234"));
     final Case createdNow2 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("A1234"));
-    final Case createdYesterday = createCase(randomDataGenerator.randomCase(now.minusDays(1)));
-    final Case createdLastWeek = createCase(randomDataGenerator.randomCase(now.minusWeeks(1)));
-    final Case createdLast2Weeks = createCase(randomDataGenerator.randomCase(now.minusWeeks(2)));
+    final Case createdYesterday = createCase(randomDataGenerator.randomCase(now.minus(1, ChronoUnit.DAYS)));
+    final Case createdLastWeek = createCase(randomDataGenerator.randomCase(now.minus(7, ChronoUnit.DAYS)));
+    final Case createdLast2Weeks = createCase(randomDataGenerator.randomCase(now.minus(14, ChronoUnit.DAYS)));
 
     // initial query
     final List<Case> initialClients = patrawinDao.findCasesOrderedByCreationTime(
-        now.minusWeeks(1), Lists.newArrayList(), 3
+        now.minus(7, ChronoUnit.DAYS), Lists.newArrayList(), 3
     );
 
     assertThat(initialClients)
@@ -127,18 +122,18 @@ class PatrawinDaoTest {
 
   @Test
   void findClientsOrderedByCreationTime() {
-    final LocalDateTime now = LocalDateTime.now();
+    final Instant now = Instant.now();
     final Client createdNow1 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
         .withClientId("123"));
     final Client createdNow2 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
         .withClientId("122"));
-    final Client createdYesterday = createClient(randomDataGenerator.randomClient(now.minusDays(1)));
-    final Client createdLastWeek = createClient(randomDataGenerator.randomClient(now.minusWeeks(1)));
-    final Client createdLast2Weeks = createClient(randomDataGenerator.randomClient(now.minusWeeks(2)));
+    final Client createdYesterday = createClient(randomDataGenerator.randomClient(now.minus(1, ChronoUnit.DAYS)));
+    final Client createdLastWeek = createClient(randomDataGenerator.randomClient(now.minus(7, ChronoUnit.DAYS)));
+    final Client createdLast2Weeks = createClient(randomDataGenerator.randomClient(now.minus(14, ChronoUnit.DAYS)));
 
     // initial query
     final List<Client> initialClients = patrawinDao.findClientsOrderedByCreationTime(
-        now.minusWeeks(1), Lists.newArrayList(), 3
+        now.minus(7, ChronoUnit.DAYS), Lists.newArrayList(), 3
     );
 
     assertThat(initialClients)
@@ -172,7 +167,7 @@ class PatrawinDaoTest {
         .params(
             patrawinCase.getCaseNumber(),
             patrawinCase.getDescription(),
-            dbDateTimeFormatter.format(patrawinCase.getCreationTime()))
+            msSqlDateTimeUtils.format(patrawinCase.getCreationTime()))
         .run();
 
     // MSSQL's DATETIME are rounded to increments of .000, .003 or .007 seconds
@@ -184,7 +179,7 @@ class PatrawinDaoTest {
         .singleResult(rs -> ImmutableCase.builder()
             .caseNumber(rs.getString(1))
             .description(rs.getString(2))
-            .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
+            .creationTime(msSqlDateTimeUtils.parse(rs.getString(3)))
             .build());
   }
 
@@ -197,7 +192,7 @@ class PatrawinDaoTest {
         .params(
             client.getClientId(),
             client.getAlias(),
-            dbDateTimeFormatter.format(client.getCreationTime()))
+            msSqlDateTimeUtils.format(client.getCreationTime()))
         .run();
 
     // MSSQL's DATETIME are rounded to increments of .000, .003 or .007 seconds
@@ -209,7 +204,7 @@ class PatrawinDaoTest {
         .singleResult(rs -> ImmutableClient.builder()
             .clientId(rs.getString(1))
             .alias(rs.getString(2))
-            .creationTime(LocalDateTime.parse(rs.getString(3), dbDateTimeFormatter))
+            .creationTime(msSqlDateTimeUtils.parse(rs.getString(3)))
             .build());
   }
 
