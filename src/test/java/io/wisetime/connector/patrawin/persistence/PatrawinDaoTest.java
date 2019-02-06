@@ -2,7 +2,7 @@
  * Copyright (c) 2019 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.persistence;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
@@ -30,6 +30,13 @@ import javax.inject.Inject;
 import javax.sql.DataSource;
 
 import io.wisetime.connector.config.RuntimeConfig;
+import io.wisetime.connector.patrawin.ConnectorLauncher;
+import io.wisetime.connector.patrawin.model.ImmutableCase;
+import io.wisetime.connector.patrawin.model.ImmutableClient;
+import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
+import io.wisetime.connector.patrawin.util.TimeDbFormatter;
+import io.wisetime.connector.patrawin.model.Case;
+import io.wisetime.connector.patrawin.model.Client;
 
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_PASSWORD;
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_USER;
@@ -46,7 +53,7 @@ class PatrawinDaoTest {
 
   private static PatrawinDao patrawinDao;
   private static FluentJdbc fluentJdbc;
-  private static MsSqlDateTimeUtils msSqlDateTimeUtils;
+  private static TimeDbFormatter timeDbFormatter;
 
   @BeforeAll
   static void setUp() {
@@ -61,9 +68,9 @@ class PatrawinDaoTest {
 
     patrawinDao = injector.getInstance(PatrawinDao.class);
     fluentJdbc = new FluentJdbcBuilder().connectionProvider(injector.getInstance(DataSource.class)).build();
-    msSqlDateTimeUtils = injector.getInstance(MsSqlDateTimeUtils.class);
+    timeDbFormatter = injector.getInstance(TimeDbFormatter.class);
 
-    // Apply Inprotech and FileSite DB schema to test db
+    // Apply DB schema to test db
     injector.getInstance(Flyway.class).migrate();
   }
 
@@ -92,8 +99,8 @@ class PatrawinDaoTest {
   @Test
   void findCasesOrderedByCreationTime() {
     final Instant now = Instant.now();
-    final Case createdNow1 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("B1234"));
-    final Case createdNow2 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withCaseNumber("A1234"));
+    final Case createdNow1 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withId("B1234"));
+    final Case createdNow2 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withId("A1234"));
     final Case createdYesterday = createCase(randomDataGenerator.randomCase(now.minus(1, ChronoUnit.DAYS)));
     final Case createdLastWeek = createCase(randomDataGenerator.randomCase(now.minus(7, ChronoUnit.DAYS)));
     final Case createdLast2Weeks = createCase(randomDataGenerator.randomCase(now.minus(14, ChronoUnit.DAYS)));
@@ -112,7 +119,7 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Case> nextCases = patrawinDao.findCasesOrderedByCreationTime(
-        now, Lists.newArrayList(createdNow2.getCaseNumber()), 3
+        now, Lists.newArrayList(createdNow2.getId()), 3
     );
 
     assertThat(nextCases)
@@ -124,9 +131,9 @@ class PatrawinDaoTest {
   void findClientsOrderedByCreationTime() {
     final Instant now = Instant.now();
     final Client createdNow1 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
-        .withClientId("123"));
+        .withId("123"));
     final Client createdNow2 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
-        .withClientId("122"));
+        .withId("122"));
     final Client createdYesterday = createClient(randomDataGenerator.randomClient(now.minus(1, ChronoUnit.DAYS)));
     final Client createdLastWeek = createClient(randomDataGenerator.randomClient(now.minus(7, ChronoUnit.DAYS)));
     final Client createdLast2Weeks = createClient(randomDataGenerator.randomClient(now.minus(14, ChronoUnit.DAYS)));
@@ -145,7 +152,7 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Client> nextClients = patrawinDao.findClientsOrderedByCreationTime(
-        now, Lists.newArrayList(createdNow2.getClientId()), 3
+        now, Lists.newArrayList(createdNow2.getId()), 3
     );
 
     assertThat(nextClients)
@@ -165,9 +172,9 @@ class PatrawinDaoTest {
         .update("INSERT INTO ARENDE_1 (Arendenr, Slagord, Skapatdat, Rowguid, Officeid, Electronic_file, " +
             "Excludedfromiprcontrol, Outsourced) VALUES (?, ?, ?, NEWID(), 1, 1, 0, 0)")
         .params(
-            patrawinCase.getCaseNumber(),
+            patrawinCase.getId(),
             patrawinCase.getDescription(),
-            msSqlDateTimeUtils.format(patrawinCase.getCreationTime()))
+            timeDbFormatter.format(patrawinCase.getCreationTime()))
         .run();
 
     // MSSQL's DATETIME are rounded to increments of .000, .003 or .007 seconds
@@ -175,11 +182,11 @@ class PatrawinDaoTest {
     // Let's query the created case so we can have reference to the actual created date
     return fluentJdbc.query()
         .select("SELECT Arendenr, Slagord, Skapatdat FROM ARENDE_1 WHERE Arendenr = ?")
-        .params(patrawinCase.getCaseNumber())
+        .params(patrawinCase.getId())
         .singleResult(rs -> ImmutableCase.builder()
-            .caseNumber(rs.getString(1))
+            .id(rs.getString(1))
             .description(rs.getString(2))
-            .creationTime(msSqlDateTimeUtils.parse(rs.getString(3)))
+            .creationTime(timeDbFormatter.parse(rs.getString(3)))
             .build());
   }
 
@@ -190,9 +197,9 @@ class PatrawinDaoTest {
             "Einvoiceaccent, Enableipforecaster, Automatfakturajn, Usebasicoutsourcingsurcharge, IsAgentInFile) " +
             "VALUES (?, ?, ?, 'N', 'N', 'N', NEWID(), 0, 0, 0, 0, 'N', 0, 0)")
         .params(
-            client.getClientId(),
+            client.getId(),
             client.getAlias(),
-            msSqlDateTimeUtils.format(client.getCreationTime()))
+            timeDbFormatter.format(client.getCreationTime()))
         .run();
 
     // MSSQL's DATETIME are rounded to increments of .000, .003 or .007 seconds
@@ -200,11 +207,11 @@ class PatrawinDaoTest {
     // Let's query the created case so we can have reference to the actual created date
     return fluentJdbc.query()
         .select("SELECT Kundnr, Kortnamnkund, Skapatdat FROM KUND_24 WHERE Kundnr = ?")
-        .params(client.getClientId())
+        .params(client.getId())
         .singleResult(rs -> ImmutableClient.builder()
-            .clientId(rs.getString(1))
+            .id(rs.getString(1))
             .alias(rs.getString(2))
-            .creationTime(msSqlDateTimeUtils.parse(rs.getString(3)))
+            .creationTime(timeDbFormatter.parse(rs.getString(3)))
             .build());
   }
 

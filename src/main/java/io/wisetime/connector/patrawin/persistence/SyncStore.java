@@ -2,7 +2,7 @@
  * Copyright (c) 2019 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.persistence;
 
 import com.google.common.collect.ImmutableList;
 
@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import io.wisetime.connector.datastore.ConnectorStore;
+import io.wisetime.connector.patrawin.model.Case;
+import io.wisetime.connector.patrawin.model.Client;
 
 /**
  * Persist and read references for printLast synced case and client records.
@@ -35,7 +37,7 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast case that was synced
    */
-  Instant getLastSyncedCaseCreationTime() {
+  public Instant getLastSyncedCaseCreationTime() {
     return connectorStore
         .getLong(LAST_SYNCED_CASE_CREATION_TIME_KEY)
         .map(Instant::ofEpochMilli)
@@ -45,7 +47,7 @@ public class SyncStore {
   /**
    * @return comma separated case numbers of the printLast batch of cases that were synced
    */
-  List<String> getLastSyncedCaseNumbers() {
+  public List<String> getLastSyncedCaseNumbers() {
     return connectorStore.getString(LAST_SYNCED_CASE_NUMBERS_KEY)
         .map(n -> n.split(DELIMITER))
         .map(Arrays::asList)
@@ -55,7 +57,7 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast client that was synced
    */
-  Instant getLastSyncedClientCreationTime() {
+  public Instant getLastSyncedClientCreationTime() {
     return connectorStore
         .getLong(LAST_SYNCED_CLIENT_CREATION_TIME_KEY)
         .map(Instant::ofEpochMilli)
@@ -65,7 +67,7 @@ public class SyncStore {
   /**
    * @return comma separated client ids of the printLast batch of clients that were synced
    */
-  List<String> getLastSyncedClientIds() {
+  public List<String> getLastSyncedClientIds() {
     return connectorStore.getString(LAST_SYNCED_CLIENT_IDS_KEY)
         .map(i -> i.split(DELIMITER))
         .map(Arrays::asList)
@@ -78,12 +80,12 @@ public class SyncStore {
    * @param lastSyncedCases List of cases, with most recently created printLast
    */
   @SuppressWarnings("Duplicates")
-  void setLastSyncedCases(final List<Case> lastSyncedCases) {
+  public void setLastSyncedCases(final List<Case> lastSyncedCases) {
     Instant lastCaseCreationTime = lastSyncedCases.get(lastSyncedCases.size() - 1).getCreationTime();
     connectorStore.putLong(LAST_SYNCED_CASE_CREATION_TIME_KEY, lastCaseCreationTime.toEpochMilli());
     connectorStore.putString(LAST_SYNCED_CASE_NUMBERS_KEY, lastSyncedCases.stream()
         .filter(lastSyncedCase -> lastSyncedCase.getCreationTime().equals(lastCaseCreationTime))
-        .map(Case::getCaseNumber)
+        .map(Case::getId)
         .collect(Collectors.joining(DELIMITER)));
   }
 
@@ -93,12 +95,12 @@ public class SyncStore {
    * @param lastSyncedClients List of clients, with the most recently created printLast
    */
   @SuppressWarnings("Duplicates")
-  void setLastSyncedClients(final List<Client> lastSyncedClients) {
+  public void setLastSyncedClients(final List<Client> lastSyncedClients) {
     Instant lastClientCreationTime = lastSyncedClients.get(lastSyncedClients.size() - 1).getCreationTime();
     connectorStore.putLong(LAST_SYNCED_CLIENT_CREATION_TIME_KEY, lastClientCreationTime.toEpochMilli());
     connectorStore.putString(LAST_SYNCED_CLIENT_IDS_KEY, lastSyncedClients.stream()
         .filter(lastSyncedClient -> lastSyncedClient.getCreationTime().equals(lastClientCreationTime))
-        .map(Client::getClientId)
+        .map(Client::getId)
         .collect(Collectors.joining(DELIMITER)));
   }
 }

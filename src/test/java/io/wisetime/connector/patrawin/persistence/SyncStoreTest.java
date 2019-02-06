@@ -2,7 +2,7 @@
  * Copyright (c) 2019 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.persistence;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,10 +10,11 @@ import org.mockito.ArgumentCaptor;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import io.wisetime.connector.datastore.ConnectorStore;
+import io.wisetime.connector.patrawin.model.ImmutableCase;
+import io.wisetime.connector.patrawin.model.ImmutableClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -77,17 +78,17 @@ class SyncStoreTest {
 
     syncStore.setLastSyncedCases(ImmutableList.of(
         ImmutableCase.builder()
-            .caseNumber("1")
+            .id("1")
             .description("")
             .creationTime(earlier)
             .build(),
         ImmutableCase.builder()
-            .caseNumber("2")
+            .id("2")
             .description("")
             .creationTime(later)
             .build(),
         ImmutableCase.builder()
-            .caseNumber("3")
+            .id("3")
             .description("")
             .creationTime(later)
             .build()
@@ -151,17 +152,17 @@ class SyncStoreTest {
 
     syncStore.setLastSyncedClients(ImmutableList.of(
         ImmutableClient.builder()
-            .clientId("1")
+            .id("1")
             .alias("")
             .creationTime(earlier)
             .build(),
         ImmutableClient.builder()
-            .clientId("3")
+            .id("3")
             .alias("")
             .creationTime(earlier)
             .build(),
         ImmutableClient.builder()
-            .clientId("2")
+            .id("2")
             .alias("")
             .creationTime(later)
             .build()

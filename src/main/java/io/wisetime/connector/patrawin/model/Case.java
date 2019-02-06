@@ -2,7 +2,7 @@
  * Copyright (c) 2019 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.model;
 
 import com.google.common.collect.ImmutableList;
 
@@ -13,23 +13,21 @@ import java.time.Instant;
 import io.wisetime.generated.connect.UpsertTagRequest;
 
 /**
- * Models a Patrawin client.
+ * Models a Patrawin case.
  *
  * @author shane.xie@practiceinsight.io
  */
 @Value.Immutable
-public interface Client {
-  String getClientId();
-
-  String getAlias();
+public interface Case extends Identifiable {
+  String getDescription();
 
   Instant getCreationTime();
 
   default UpsertTagRequest toUpsertTagRequest(final String path) {
     return new UpsertTagRequest()
-        .name(getClientId())
-        .description(getAlias())
+        .name(getId())
+        .description(getDescription())
         .path(path)
-        .additionalKeywords(ImmutableList.of(getClientId()));
+        .additionalKeywords(ImmutableList.of(getId()));
   }
 }

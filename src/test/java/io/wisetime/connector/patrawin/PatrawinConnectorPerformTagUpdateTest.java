@@ -21,6 +21,11 @@ import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
+import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
+import io.wisetime.connector.patrawin.model.Case;
+import io.wisetime.connector.patrawin.model.Client;
+import io.wisetime.connector.patrawin.persistence.PatrawinDao;
+import io.wisetime.connector.patrawin.persistence.SyncStore;
 import io.wisetime.generated.connect.UpsertTagRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -161,16 +166,15 @@ public class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequestsCaptor.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(case1.getCaseNumber())
+                .name(case1.getId())
                 .description(case1.getDescription())
-                .additionalKeywords(ImmutableList.of(case1.getCaseNumber()))
+                .additionalKeywords(ImmutableList.of(case1.getId()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(case2.getCaseNumber())
+                .name(case2.getId())
                 .description(case2.getDescription())
-                .additionalKeywords(ImmutableList.of(case2.getCaseNumber()))
-                .path(TAG_UPSERT_PATH)
-        );
+                .additionalKeywords(ImmutableList.of(case2.getId()))
+                .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Case>> storeCasesCaptor = ArgumentCaptor.forClass(List.class);
     verify(syncStore, times(1)).setLastSyncedCases(storeCasesCaptor.capture());
@@ -243,16 +247,15 @@ public class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequests.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(client1.getClientId())
+                .name(client1.getId())
                 .description(client1.getAlias())
-                .additionalKeywords(ImmutableList.of(client1.getClientId()))
+                .additionalKeywords(ImmutableList.of(client1.getId()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(client2.getClientId())
+                .name(client2.getId())
                 .description(client2.getAlias())
-                .additionalKeywords(ImmutableList.of(client2.getClientId()))
-                .path(TAG_UPSERT_PATH)
-        );
+                .additionalKeywords(ImmutableList.of(client2.getId()))
+                .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Client>> storeClientsCaptor = ArgumentCaptor.forClass(List.class);
     verify(syncStore, times(1)).setLastSyncedClients(storeClientsCaptor.capture());

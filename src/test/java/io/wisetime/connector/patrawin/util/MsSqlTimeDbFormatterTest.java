@@ -2,7 +2,7 @@
  * Copyright (c) 2019 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.util;
 
 import org.junit.jupiter.api.Test;
 
@@ -15,9 +15,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 /**
  * @author galya.bogdanova@m.practiceinsight.io
  */
-public class MsSqlDateTimeUtilsTest {
+public class MsSqlTimeDbFormatterTest {
 
-  private MsSqlDateTimeUtils msSqlDateTimeUtils = new MsSqlDateTimeUtils();
+  private MsSqlTimeDbFormatter msSqlDateTimeUtils = new MsSqlTimeDbFormatter();
 
   @Test
   void format_correct_instant() {

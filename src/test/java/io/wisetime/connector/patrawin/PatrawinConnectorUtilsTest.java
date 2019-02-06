@@ -4,12 +4,11 @@
 
 package io.wisetime.connector.patrawin;
 
-import com.google.inject.Guice;
-
 import org.junit.jupiter.api.Test;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import io.wisetime.connector.datastore.ConnectorStore;
+import io.wisetime.connector.patrawin.persistence.SyncStore;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;

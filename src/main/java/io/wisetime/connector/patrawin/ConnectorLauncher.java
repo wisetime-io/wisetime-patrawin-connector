@@ -20,6 +20,8 @@ import javax.sql.DataSource;
 import io.wisetime.connector.ServerRunner;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.config.RuntimeConfigKey;
+import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
+import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 
 /**
  * Connector application entry point.
@@ -90,7 +92,7 @@ public class ConnectorLauncher {
       log.info("Connecting to Patrawin database at URL: {}, Username: {}", hikariConfig.getJdbcUrl(),
           hikariConfig.getUsername());
 
-      bind(MsSqlDateTimeUtils.class).toInstance(new MsSqlDateTimeUtils());
+      bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
       bind(DataSource.class).toInstance(new HikariDataSource(hikariConfig));
     }
   }

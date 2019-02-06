@@ -8,6 +8,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,6 +17,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import io.wisetime.connector.api_client.ApiClient;
@@ -25,7 +27,18 @@ import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.integrate.WiseTimeConnector;
+import io.wisetime.connector.patrawin.model.Case;
+import io.wisetime.connector.patrawin.model.Client;
+import io.wisetime.connector.patrawin.model.ImmutableWorklog;
+import io.wisetime.connector.patrawin.persistence.PatrawinDao;
+import io.wisetime.connector.patrawin.persistence.SyncStore;
+import io.wisetime.connector.patrawin.util.TimeDbFormatter;
+import io.wisetime.connector.template.TemplateFormatter;
+import io.wisetime.connector.template.TemplateFormatterConfig;
+import io.wisetime.connector.utils.DurationCalculator;
+import io.wisetime.generated.connect.Tag;
 import io.wisetime.generated.connect.TimeGroup;
+import io.wisetime.generated.connect.TimeRow;
 import io.wisetime.generated.connect.UpsertTagRequest;
 import spark.Request;
 
@@ -42,9 +55,12 @@ public class PatrawinConnector implements WiseTimeConnector {
   private static final Logger log = LoggerFactory.getLogger(PatrawinConnector.class);
   private ApiClient apiClient;
   private SyncStore syncStore;
+  private TemplateFormatter narrativeFormatter;
 
   @Inject
   private PatrawinDao patrawinDao;
+  @Inject
+  private TimeDbFormatter timeDbFormatter;
 
   @Override
   public void init(ConnectorModule connectorModule) {
@@ -53,6 +69,11 @@ public class PatrawinConnector implements WiseTimeConnector {
 
     this.apiClient = connectorModule.getApiClient();
     this.syncStore = createSyncStore(connectorModule.getConnectorStore());
+    this.narrativeFormatter = new TemplateFormatter(
+        TemplateFormatterConfig.builder()
+            .withTemplatePath("classpath:patrawin-template.ftl")
+            .build()
+    );
   }
 
   @VisibleForTesting
@@ -66,7 +87,7 @@ public class PatrawinConnector implements WiseTimeConnector {
       // Drain all unsynced cases
     }
     while (syncClients()) {
-      // Drain all unscyned clients
+      // Drain all unsynced clients
     }
   }
 
@@ -93,64 +114,67 @@ public class PatrawinConnector implements WiseTimeConnector {
           .withMessage("Cannot post time group with no time rows");
     }
 
-    // TODO: add patrawinDao.findUser()
-    // TODO: how to write / update time (stored procedure)
-    // TODO: tag matches case and client
-    // TODO: patrawinDao#findCaseByTagName, findClientByTagName
-    /*final Optional<String> author = patrawinDao.findUsername(timeGroup.getUser().getExternalId());
-    if (!author.isPresent()) {
+    final String authorId = StringUtils.isEmpty(timeGroup.getUser().getExternalId()) ?
+        timeGroup.getUser().getEmail() :
+        timeGroup.getUser().getExternalId();
+    if (!patrawinDao.doesUserExist(authorId)) {
       return PostResult.PERMANENT_FAILURE
           .withMessage("User does not exist in Patrawin");
     }
 
-    final Function<Tag, Optional<Case>> findCaseOrClient = tag -> {
-      final Optional<Case> foundCase = patrawinDao.findCaseByTagName(tag.getName());
-      final Optional<Client> foundClient = patrawinDao.findClientByTagName(tag.getName());
-      if (!foundCase.isPresent() && !foundClient.isPresent()) {
-        log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
+    final Optional<Integer> activityCode = getTimeGroupActivityCode(timeGroup.getTimeRows());
+    if (!activityCode.isPresent()) {
+      return PostResult.PERMANENT_FAILURE
+          .withMessage("Time group contains invalid modifier.");
+    }
+
+    final Function<Tag, Optional<String>> findCaseOrClientId = tag -> {
+      String id = tag.getName();
+      if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
+        return Optional.of(id);
       }
-      return foundCase;
+      log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
+      return Optional.empty();
     };
 
-    final long workedTime = DurationCalculator
+    final String messageBody = narrativeFormatter.format(timeGroup);
+
+    final Instant activityStartTimeInstant = timeDbFormatter.convert(activityStartTime.get());
+
+    final long chargeableTimeSeconds = DurationCalculator
         .of(timeGroup)
         .calculate()
         .getPerTagDuration();
 
-    final Function<Case, Case> updateCaseTimeSpent = aCase -> {
-      final long updatedTimeSpent = aCase.getTimeSpent() + workedTime;
-      patrawinDao.updateCaseTimeSpent(aCase.getId(), updatedTimeSpent);
-      return aCase;
-    };
-
-    final Function<Case, Case> createWorklog = forCase -> {
-      final String messageBody = templateFormatter.format(timeGroup);
-      final Worklog worklog = Worklog
+    final Function<String, String> createWorklog = caseOrClientId -> {
+      final ImmutableWorklog worklog = ImmutableWorklog
           .builder()
-          .caseId(forCase.getId())
-          .author(author.get())
-          .body(messageBody)
-          .created(activityStartTime.get())
-          .timeWorked(workedTime)
+          .caseOrClientId(caseOrClientId)
+          .usernameOrEmail(authorId)
+          .activityCode(activityCode.get())
+          .narrative(messageBody)
+          .narrativeNotes("")
+          .startTime(activityStartTimeInstant)
+          .durationSeconds(timeGroup.getTotalDurationSecs())
+          .chargableTimeSeconds(chargeableTimeSeconds)
           .build();
 
       patrawinDao.createWorklog(worklog);
-      return forCase;
-    };*/
+      return caseOrClientId;
+    };
 
     try {
-      /*patrawinDao.asTransaction(() ->
+      patrawinDao.asTransaction(() ->
           timeGroup.getTags()
               .stream()
-              .map(findCaseOrClient)
+              .map(findCaseOrClientId)
               .filter(Optional::isPresent)
               .map(Optional::get)
-              .map(updateCaseTimeSpent)
               .map(createWorklog)
-              .forEach(aCase ->
-                  log.info("Posted time to Patrawin case / client {} on behalf of {}", aCase.getKey(), author.get())
+              .forEach(caseOrClientId ->
+                  log.info("Posted time to Patrawin case / client {} on behalf of {}", caseOrClientId, authorId)
               )
-      );*/
+      );
     } catch (RuntimeException e) {
       log.error(e.getMessage(), e);
       return PostResult.TRANSIENT_FAILURE
@@ -158,6 +182,24 @@ public class PatrawinConnector implements WiseTimeConnector {
           .withMessage("There was an error posting time to the Patrawin database");
     }
     return PostResult.SUCCESS;
+  }
+
+  private Optional<Integer> getTimeGroupActivityCode(final List<TimeRow> timeRows) {
+    /*final List<String> workCodes = timeRows.stream()
+        .map(TimeRow::getModifier)
+        .map(modifier -> StringUtils.defaultIfEmpty(modifier, defaultModifier))
+        .distinct()
+        .map(modifierActivityCodeMap::get)
+        .collect(Collectors.toList());
+    if (workCodes.size() != 1) {
+      log.error(
+          "All time logs within time group should have same modifier, but got: {}",
+          timeRows.stream().map(TimeRow::getModifier).distinct().collect(Collectors.toList())
+      );
+      return Optional.empty();
+    }
+    return Optional.of(workCodes.get(0));*/
+    return Optional.empty();
   }
 
   @Override
@@ -182,7 +224,7 @@ public class PatrawinConnector implements WiseTimeConnector {
         log.info("Detected {} new {}: {}",
             cases.size(),
             cases.size() > 1 ? "cases" : "case",
-            cases.stream().map(Case::getCaseNumber).collect(Collectors.joining(", ")));
+            cases.stream().map(Case::getId).collect(Collectors.joining(", ")));
 
         final List<UpsertTagRequest> upsertRequests = cases
             .stream()
@@ -220,7 +262,7 @@ public class PatrawinConnector implements WiseTimeConnector {
         log.info("Detected {} new {}: {}",
             clients.size(),
             clients.size() > 1 ? "clients" : "client",
-            clients.stream().map(Client::getClientId).collect(Collectors.joining(", ")));
+            clients.stream().map(Client::getId).collect(Collectors.joining(", ")));
 
         final List<UpsertTagRequest> upsertRequests = clients
             .stream()

@@ -2,7 +2,7 @@
  * Copyright (c) 2019 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.fake;
 
 import com.github.javafaker.Faker;
 
@@ -12,6 +12,11 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import io.wisetime.connector.patrawin.model.ImmutableCase;
+import io.wisetime.connector.patrawin.model.ImmutableClient;
+import io.wisetime.connector.patrawin.model.Case;
+import io.wisetime.connector.patrawin.model.Client;
+
 /**
  * @author shane.xie@practiceinsigt.io
  */
@@ -19,35 +24,35 @@ public class RandomDataGenerator {
 
   private static final Faker FAKER = new Faker();
 
-  Case randomCase() {
+  public Case randomCase() {
     return randomCase(Instant.now());
   }
 
   public Case randomCase(Instant createdTime) {
     return ImmutableCase.builder()
-        .caseNumber(FAKER.bothify("??####", true))
+        .id(FAKER.bothify("??####", true))
         .description(FAKER.lorem().characters(12, 30))
         .creationTime(createdTime)
         .build();
   }
 
-  List<Case> randomCases(int count) {
+  public List<Case> randomCases(int count) {
     return randomEntities(this::randomCase, count, count);
   }
 
-  Client randomClient() {
+  public Client randomClient() {
     return randomClient(Instant.now());
   }
 
   public Client randomClient(Instant createdTime) {
     return ImmutableClient.builder()
-        .clientId(FAKER.bothify("??###", true))
+        .id(FAKER.bothify("??###", true))
         .alias(FAKER.company().name())
         .creationTime(createdTime)
         .build();
   }
 
-  List<Client> randomClients(int count) {
+  public List<Client> randomClients(int count) {
     return randomEntities(this::randomClient, count, count);
   }
 
