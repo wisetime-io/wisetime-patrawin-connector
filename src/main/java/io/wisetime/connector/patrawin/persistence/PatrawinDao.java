@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.Pair;
 import org.codejargon.fluentjdbc.api.FluentJdbc;
 import org.codejargon.fluentjdbc.api.FluentJdbcBuilder;
 import org.codejargon.fluentjdbc.api.mapper.Mappers;
@@ -228,11 +229,11 @@ public class PatrawinDao {
     final Map<String, Set<String>> requiredTablesAndColumnsMap = new HashMap<>();
     requiredTablesAndColumnsMap.put(
         TABLE_NAME_CASE,
-        ImmutableSet.of("arendenr", "slagord", "skapatdat")
+        ImmutableSet.of("Arendenr", "Slagord", "Skapatdat")
     );
     requiredTablesAndColumnsMap.put(
         TABLE_NAME_CLIENT,
-        ImmutableSet.of("kundnr", "kortnamnkund", "skapatdat")
+        ImmutableSet.of("Kundnr", "Kortnamnkund", "Skapatdat")
     );
     requiredTablesAndColumnsMap.put(
         TABLE_NAME_USER,
@@ -247,9 +248,8 @@ public class PatrawinDao {
         .selectFromMetaData(meta -> meta.getColumns(null, null, null, null))
         .listResult(rs -> ImmutablePair.of(rs.getString("TABLE_NAME"), rs.getString("COLUMN_NAME")))
         .stream()
-        .filter(pair -> requiredTablesAndColumnsMap.containsKey(pair.getKey().toLowerCase()))
-        // transform to lower case to ensure we are comparing the same case
-        .collect(groupingBy(pair -> pair.getKey().toLowerCase(), mapping(pair -> pair.getValue().toLowerCase(), toList())));
+        .filter(pair -> requiredTablesAndColumnsMap.containsKey(pair.getKey()))
+        .collect(groupingBy(Pair::getKey, mapping(Pair::getValue, toList())));
 
     return requiredTablesAndColumnsMap.entrySet().stream()
         .allMatch(entry -> actualTablesAndColumnsMap.containsKey(entry.getKey()) &&
