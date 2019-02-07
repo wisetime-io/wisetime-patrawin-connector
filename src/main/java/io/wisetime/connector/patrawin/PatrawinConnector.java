@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -27,6 +28,7 @@ import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.integrate.WiseTimeConnector;
+import io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
 import io.wisetime.connector.patrawin.model.ImmutableWorklog;
@@ -82,6 +84,11 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   @Override
+  public boolean isConnectorHealthy() {
+    return patrawinDao.canQueryDb();
+  }
+
+  @Override
   public void performTagUpdate() {
     while (syncCases()) {
       // Drain all unsynced cases
@@ -89,122 +96,6 @@ public class PatrawinConnector implements WiseTimeConnector {
     while (syncClients()) {
       // Drain all unsynced clients
     }
-  }
-
-  @Override
-  public PostResult postTime(Request request, TimeGroup timeGroup) {
-    log.info("Posted time received for {}: {}",
-        timeGroup.getUser().getExternalId(),
-        timeGroup.toString());
-
-    Optional<String> callerKey = RuntimeConfig.getString(ConnectorConfigKey.CALLER_KEY);
-    if (callerKey.isPresent() && !callerKey.get().equals(timeGroup.getCallerKey())) {
-      return PostResult.PERMANENT_FAILURE
-          .withMessage("Invalid caller key in post time webhook call");
-    }
-
-    if (timeGroup.getTags().isEmpty()) {
-      return PostResult.SUCCESS
-          .withMessage("Time group has no tags. There is nothing to post to Patrawin.");
-    }
-
-    final Optional<LocalDateTime> activityStartTime = startTime(timeGroup);
-    if (!activityStartTime.isPresent()) {
-      return PostResult.PERMANENT_FAILURE
-          .withMessage("Cannot post time group with no time rows");
-    }
-
-    final String authorId = StringUtils.isEmpty(timeGroup.getUser().getExternalId()) ?
-        timeGroup.getUser().getEmail() :
-        timeGroup.getUser().getExternalId();
-    if (!patrawinDao.doesUserExist(authorId)) {
-      return PostResult.PERMANENT_FAILURE
-          .withMessage("User does not exist in Patrawin");
-    }
-
-    final Optional<Integer> activityCode = getTimeGroupActivityCode(timeGroup.getTimeRows());
-    if (!activityCode.isPresent()) {
-      return PostResult.PERMANENT_FAILURE
-          .withMessage("Time group contains invalid modifier.");
-    }
-
-    final Function<Tag, Optional<String>> findCaseOrClientId = tag -> {
-      String id = tag.getName();
-      if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
-        return Optional.of(id);
-      }
-      log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
-      return Optional.empty();
-    };
-
-    final String messageBody = narrativeFormatter.format(timeGroup);
-
-    final Instant activityStartTimeInstant = timeDbFormatter.convert(activityStartTime.get());
-
-    final long chargeableTimeSeconds = DurationCalculator
-        .of(timeGroup)
-        .calculate()
-        .getPerTagDuration();
-
-    final Function<String, String> createWorklog = caseOrClientId -> {
-      final ImmutableWorklog worklog = ImmutableWorklog
-          .builder()
-          .caseOrClientId(caseOrClientId)
-          .usernameOrEmail(authorId)
-          .activityCode(activityCode.get())
-          .narrative(messageBody)
-          .narrativeNotes("")
-          .startTime(activityStartTimeInstant)
-          .durationSeconds(timeGroup.getTotalDurationSecs())
-          .chargableTimeSeconds(chargeableTimeSeconds)
-          .build();
-
-      patrawinDao.createWorklog(worklog);
-      return caseOrClientId;
-    };
-
-    try {
-      patrawinDao.asTransaction(() ->
-          timeGroup.getTags()
-              .stream()
-              .map(findCaseOrClientId)
-              .filter(Optional::isPresent)
-              .map(Optional::get)
-              .map(createWorklog)
-              .forEach(caseOrClientId ->
-                  log.info("Posted time to Patrawin case / client {} on behalf of {}", caseOrClientId, authorId)
-              )
-      );
-    } catch (RuntimeException e) {
-      log.error(e.getMessage(), e);
-      return PostResult.TRANSIENT_FAILURE
-          .withError(e)
-          .withMessage("There was an error posting time to the Patrawin database");
-    }
-    return PostResult.SUCCESS;
-  }
-
-  private Optional<Integer> getTimeGroupActivityCode(final List<TimeRow> timeRows) {
-    /*final List<String> workCodes = timeRows.stream()
-        .map(TimeRow::getModifier)
-        .map(modifier -> StringUtils.defaultIfEmpty(modifier, defaultModifier))
-        .distinct()
-        .map(modifierActivityCodeMap::get)
-        .collect(Collectors.toList());
-    if (workCodes.size() != 1) {
-      log.error(
-          "All time logs within time group should have same modifier, but got: {}",
-          timeRows.stream().map(TimeRow::getModifier).distinct().collect(Collectors.toList())
-      );
-      return Optional.empty();
-    }
-    return Optional.of(workCodes.get(0));*/
-    return Optional.empty();
-  }
-
-  @Override
-  public boolean isConnectorHealthy() {
-    return patrawinDao.canQueryDb();
   }
 
   @VisibleForTesting
@@ -283,16 +174,124 @@ public class PatrawinConnector implements WiseTimeConnector {
     }
   }
 
+  @Override
+  public PostResult postTime(Request request, TimeGroup timeGroup) {
+    log.info("Posted time received for {}: {}", timeGroup.getUser().getExternalId(), timeGroup.toString());
+
+    final Optional<String> callerKey = RuntimeConfig.getString(ConnectorConfigKey.CALLER_KEY);
+    if (callerKey.isPresent() && !callerKey.get().equals(timeGroup.getCallerKey())) {
+      return PostResult.PERMANENT_FAILURE.withMessage("Invalid caller key in post time webhook call");
+    }
+
+    if (timeGroup.getTags().isEmpty()) {
+      return PostResult.SUCCESS.withMessage("Time group has no tags. There is nothing to post to Patrawin.");
+    }
+
+    final Optional<LocalDateTime> activityStartTime = startTime(timeGroup);
+    if (!activityStartTime.isPresent()) {
+      return PostResult.PERMANENT_FAILURE.withMessage("Cannot post time group with no time rows");
+    }
+
+    final String authorUsernameOrEmail = StringUtils.isEmpty(timeGroup.getUser().getExternalId()) ?
+        timeGroup.getUser().getEmail() :
+        timeGroup.getUser().getExternalId();
+    if (!patrawinDao.doesUserExist(authorUsernameOrEmail)) {
+      return PostResult.PERMANENT_FAILURE.withMessage("User does not exist in Patrawin");
+    }
+
+    final Set<String> timeGroupModifiers = getTimeGroupModifiers(timeGroup);
+    if (timeGroupModifiers.size() > 1) {
+      return PostResult.PERMANENT_FAILURE.withMessage("Time group contains different modifiers " + timeGroupModifiers);
+    }
+
+    final Optional<String> defaultModifier = RuntimeConfig.getString(PatrawinConnectorConfigKey.DEFAULT_MODIFIER);
+    if (timeGroupModifiers.size() == 0 && !defaultModifier.isPresent()) {
+      return PostResult.PERMANENT_FAILURE.withMessage("No modifier found for the time group.");
+    }
+
+    final String modifier = (timeGroupModifiers.size() == 0) ? timeGroupModifiers.iterator().next() : defaultModifier.get();
+
+    int activityCode;
+    try {
+      activityCode = Integer.parseInt(modifier);
+    } catch (NumberFormatException e) {
+      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid modifier " + modifier);
+    }
+
+    if (!patrawinDao.doesActivityCodeExist(activityCode)) {
+      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid modifier " + modifier);
+    }
+
+    final Function<Tag, Optional<String>> findCaseOrClientId = tag -> {
+      String id = tag.getName();
+      if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
+        return Optional.of(id);
+      }
+      log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
+      return Optional.empty();
+    };
+
+    final String messageBody = narrativeFormatter.format(timeGroup);
+    final Instant activityStartTimeInstant = timeDbFormatter.convert(activityStartTime.get());
+    final long chargeableTimeSeconds = DurationCalculator
+        .of(timeGroup)
+        .calculate()
+        .getPerTagDuration();
+
+    final Function<String, String> createWorklog = caseOrClientId -> {
+      final ImmutableWorklog worklog = ImmutableWorklog
+          .builder()
+          .caseOrClientId(caseOrClientId)
+          .usernameOrEmail(authorUsernameOrEmail)
+          .activityCode(activityCode)
+          .narrative(messageBody)
+          .startTime(activityStartTimeInstant)
+          .durationSeconds(timeGroup.getTotalDurationSecs())
+          .chargableTimeSeconds(chargeableTimeSeconds)
+          .build();
+
+      patrawinDao.createWorklog(worklog);
+      return caseOrClientId;
+    };
+
+    try {
+      patrawinDao.asTransaction(() ->
+          timeGroup.getTags()
+              .stream()
+              .map(findCaseOrClientId)
+              .filter(Optional::isPresent)
+              .map(Optional::get)
+              .map(createWorklog)
+              .forEach(caseOrClientId ->
+                  log.info("Posted time to Patrawin case / client {} on behalf of {}", caseOrClientId, authorUsernameOrEmail)
+              )
+      );
+    } catch (RuntimeException e) {
+      log.error(e.getMessage(), e);
+      return PostResult.TRANSIENT_FAILURE
+          .withError(e)
+          .withMessage("There was an error posting time to the Patrawin database");
+    }
+    return PostResult.SUCCESS;
+  }
+
+  @VisibleForTesting
+  Set<String> getTimeGroupModifiers(final TimeGroup timeRows) {
+    return timeRows.getTimeRows().stream()
+        .map(TimeRow::getModifier)
+        .collect(Collectors.toSet());
+  }
+
   private int tagUpsertBatchSize() {
     return RuntimeConfig
-        .getInt(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_BATCH_SIZE)
+        .getInt(PatrawinConnectorConfigKey.TAG_UPSERT_BATCH_SIZE)
         // A large batch mitigates query round trip latency
         .orElse(200);
   }
 
   private String tagUpsertPath() {
     return RuntimeConfig
-        .getString(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_PATH)
+        .getString(PatrawinConnectorConfigKey.TAG_UPSERT_PATH)
         .orElse("/Patrawin/");
   }
 

@@ -19,6 +19,7 @@ import io.wisetime.connector.patrawin.model.Client;
  * Persist and read references for printLast synced case and client records.
  *
  * @author shane.xie@practiceinsight.io
+ * @author galya.bogdanova@m.practiceinsight.io
  */
 public class SyncStore {
 

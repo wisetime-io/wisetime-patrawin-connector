@@ -6,6 +6,7 @@ package io.wisetime.connector.patrawin;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Guice;
+import com.google.inject.Injector;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -20,6 +21,8 @@ import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.patrawin.fake.FakeEntities;
 import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
+import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
+import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.connector.template.TemplateFormatter;
 import io.wisetime.generated.connect.TimeGroup;
 import spark.Request;
@@ -47,8 +50,11 @@ public class PatrawinConnectorPostTimeTest {
 
   @BeforeAll
   static void setUp() {
-    connector = Guice.createInjector(binder -> binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao))
-        .getInstance(PatrawinConnector.class);
+    Injector injector = Guice.createInjector(binder -> {
+      binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao);
+      binder.bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
+    });
+    connector = injector.getInstance(PatrawinConnector.class);
 
     // Ensure PatrawinConnector#init will not fail
     doReturn(true).when(patrawinDao).hasExpectedSchema();

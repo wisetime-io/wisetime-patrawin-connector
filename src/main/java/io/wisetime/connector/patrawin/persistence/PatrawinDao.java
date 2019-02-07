@@ -39,6 +39,7 @@ import static java.util.stream.Collectors.toList;
  * Simple, unsophisticated access to the Patrawin database.
  *
  * @author shane.xie@practiceinsight.io
+ * @author galya.bogdanova@m.practiceinsight.io
  */
 public class PatrawinDao {
 
@@ -47,6 +48,7 @@ public class PatrawinDao {
   private static final String TABLE_NAME_CASE = "ARENDE_1";
   private static final String TABLE_NAME_CLIENT = "KUND_24";
   private static final String TABLE_NAME_USER = "BEHORIG_50";
+  private static final String TABLE_NAME_ACTIVITY_CODE = "FAKTURATEXTNR_15";
 
   private final FluentJdbc fluentJdbc;
   private final TimeDbFormatter timeDbFormatter;
@@ -72,18 +74,19 @@ public class PatrawinDao {
   public List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedCaseNumbers,
                                                    final int maxResults) {
     final StringBuilder query = new StringBuilder(
-        "SELECT TOP (:maxResults) Arendenr AS CaseNum, Slagord AS Description, Skapatdat AS CreatedDate FROM "
+        "SELECT Arendenr AS CaseNum, Slagord AS Description, Skapatdat AS CreatedDate FROM "
     );
     query.append(TABLE_NAME_CASE);
-    query.append(" WHERE CreatedDate >= :createdOnOrAfter");
+    query.append(" WHERE Skapatdat >= :createdOnOrAfter");
     if (!excludedCaseNumbers.isEmpty()) {
-      query.append(" AND CaseNum NOT IN (:excludedCaseNumbers)");
+      query.append(" AND Arendenr NOT IN (:excludedCaseNumbers)");
     }
     query.append(" ORDER BY CreatedDate, CaseNum");
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter))
+        .maxRows((long) maxResults);
     if (!excludedCaseNumbers.isEmpty()) {
       selectQuery.namedParam("excludedCaseNumbers", excludedCaseNumbers);
     }
@@ -106,18 +109,19 @@ public class PatrawinDao {
   public List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
                                                        final int maxResults) {
     final StringBuilder query = new StringBuilder(
-        "SELECT TOP (:maxResults) Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate FROM "
+        "SELECT Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate FROM "
     );
     query.append(TABLE_NAME_CLIENT);
-    query.append(" WHERE CreatedDate >= :createdOnOrAfter");
+    query.append(" WHERE Skapatdat >= :createdOnOrAfter");
     if (!excludedClientIds.isEmpty()) {
-      query.append(" AND ClientId NOT IN (:excludedClientIds)");
+      query.append(" AND Kundnr NOT IN (:excludedClientIds)");
     }
     query.append(" ORDER BY CreatedDate, ClientId");
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter));
+        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter))
+        .maxRows((long) maxResults);
     if (!excludedClientIds.isEmpty()) {
       selectQuery.namedParam("excludedClientIds", excludedClientIds);
     }
@@ -130,25 +134,37 @@ public class PatrawinDao {
   }
 
   public boolean doesUserExist(String usernameOrEmail) {
-    return query().select("SELECT TOP 1 Username, Email FROM " + TABLE_NAME_USER +
+    return query().select("SELECT Username, Email FROM " + TABLE_NAME_USER +
         " WHERE Username = :usernameOrEmail OR Email = :usernameOrEmail")
         .namedParam("usernameOrEmail", usernameOrEmail)
+        .maxRows(1L)
         .firstResult(rs -> rs)
         .isPresent();
   }
 
   public boolean doesCaseExist(String caseNumber) {
-    return query().select("SELECT TOP 1 Arendenr AS CaseNum FROM " + TABLE_NAME_CASE +
+    return query().select("SELECT Arendenr AS CaseNum FROM " + TABLE_NAME_CASE +
         " WHERE CaseNum = :caseNumber")
         .namedParam("caseNumber", caseNumber)
+        .maxRows(1L)
         .firstResult(rs -> rs)
         .isPresent();
   }
 
   public boolean doesClientExist(String clientId) {
-    return query().select("SELECT TOP 1 Kundnr AS ClientId FROM " + TABLE_NAME_CLIENT +
+    return query().select("SELECT Kundnr AS ClientId FROM " + TABLE_NAME_CLIENT +
         " WHERE ClientId = :clientId")
         .namedParam("clientId", clientId)
+        .maxRows(1L)
+        .firstResult(rs -> rs)
+        .isPresent();
+  }
+
+  public boolean doesActivityCodeExist(int activityCode) {
+    return query().select("SELECT Fakturatextnr AS ActivityCode FROM " + TABLE_NAME_ACTIVITY_CODE +
+        " WHERE Fakturatextnr = :activityCode")
+        .namedParam("activityCode", activityCode)
+        .maxRows(1L)
         .firstResult(rs -> rs)
         .isPresent();
   }
@@ -156,7 +172,7 @@ public class PatrawinDao {
   /**
    * The parameters for post_time are as follows:
    *
-   * @pnUserIdentityId int = null, -- not being set being used by the agent
+   * @case_or_client_id nvarchar
    * @pnStaffMemberId int,
    * @pdtEntryDate datetime, -- in yyyy-MM-dd format
    * @pnCaseId int = null,
@@ -221,6 +237,10 @@ public class PatrawinDao {
     requiredTablesAndColumnsMap.put(
         TABLE_NAME_USER,
         ImmutableSet.of("Username", "Email")
+    );
+    requiredTablesAndColumnsMap.put(
+        TABLE_NAME_ACTIVITY_CODE,
+        ImmutableSet.of("Fakturatextnr")
     );
 
     final Map<String, List<String>> actualTablesAndColumnsMap = query().databaseInspection()

@@ -31,12 +31,12 @@ import javax.sql.DataSource;
 
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.patrawin.ConnectorLauncher;
-import io.wisetime.connector.patrawin.model.ImmutableCase;
-import io.wisetime.connector.patrawin.model.ImmutableClient;
 import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
-import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
+import io.wisetime.connector.patrawin.model.ImmutableCase;
+import io.wisetime.connector.patrawin.model.ImmutableClient;
+import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_PASSWORD;
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_USER;
