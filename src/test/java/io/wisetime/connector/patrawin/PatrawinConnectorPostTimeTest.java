@@ -11,6 +11,7 @@ import com.google.inject.Injector;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
@@ -20,6 +21,7 @@ import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.patrawin.fake.FakeEntities;
 import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
+import io.wisetime.connector.patrawin.model.Worklog;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
 import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
@@ -29,10 +31,16 @@ import spark.Request;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 /**
  * @author shane.xie@practiceinsight.io
@@ -42,7 +50,7 @@ public class PatrawinConnectorPostTimeTest {
 
   private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
   private static ApiClient apiClient = mock(ApiClient.class);
-  private static TemplateFormatter templateFormatter = mock(TemplateFormatter.class);
+  private static TemplateFormatter narrativeFormatter = mock(TemplateFormatter.class);
 
   private static PatrawinConnector connector;
   private static FakeEntities fakeEntities = new FakeEntities();
@@ -64,26 +72,19 @@ public class PatrawinConnectorPostTimeTest {
 
   @BeforeEach
   void setUpTest() {
-    reset(templateFormatter);
+    RuntimeConfig.clearProperty(ConnectorConfigKey.CALLER_KEY);
+
+    reset(narrativeFormatter);
     reset(patrawinDao);
+
+    when(patrawinDao.doesUserExist(anyString()))
+        .thenReturn(true);
 
     // Ensure that code in the transaction lambda gets exercised
     doAnswer(invocation -> {
       invocation.<Runnable>getArgument(0).run();
       return null;
     }).when(patrawinDao).asTransaction(any(Runnable.class));
-  }
-
-
-  @Test
-  void postTime_without_tags_should_succeed() {
-    final TimeGroup groupWithNoTags = fakeEntities.randomTimeGroup().tags(ImmutableList.of());
-
-    assertThat(connector.postTime(fakeRequest(), groupWithNoTags))
-        .isEqualTo(PostResult.SUCCESS)
-        .as("There is nothing to post to Patrawin");
-
-    verifyPatrawinNotUpdated();
   }
 
   @Test
@@ -95,62 +96,132 @@ public class PatrawinConnectorPostTimeTest {
         .callerKey("wrong-key")
         .tags(ImmutableList.of());
 
-    assertThat(connector.postTime(fakeRequest(), groupWithNoTags))
-        .isEqualTo(PostResult.PERMANENT_FAILURE)
-        .as("Invalid caller key should result in post failure");
+    assertThat(connector.postTime(mock(Request.class), groupWithNoTags))
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verifyPatrawinNotUpdated();
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
-  void postTime_with_valid_caller_key_should_succeed() {
-    RuntimeConfig.setProperty(ConnectorConfigKey.CALLER_KEY, "caller-key");
+  void postTime_without_tags_should_succeed() {
+    final TimeGroup groupWithNoTags = fakeEntities.randomTimeGroup().tags(ImmutableList.of());
 
-    final TimeGroup groupWithNoTags = fakeEntities
-        .randomTimeGroup()
-        .callerKey("caller-key")
-        .tags(ImmutableList.of());
+    assertThat(connector.postTime(mock(Request.class), groupWithNoTags))
+        .isEqualTo(PostResult.SUCCESS);
 
-    assertThat(connector.postTime(fakeRequest(), groupWithNoTags))
-        .isEqualTo(PostResult.SUCCESS)
-        .as("Posting time with valid caller key should succeed");
-
-    verifyPatrawinNotUpdated();
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
   void postTime_without_time_rows_should_fail() {
     final TimeGroup groupWithNoTimeRows = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of());
 
-    assertThat(connector.postTime(fakeRequest(), groupWithNoTimeRows))
-        .isEqualTo(PostResult.PERMANENT_FAILURE)
-        .as("Group with no time is invalid");
+    assertThat(connector.postTime(mock(Request.class), groupWithNoTimeRows))
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verifyPatrawinNotUpdated();
-  }
-
-  /*@Test
-  void postTime_cant_find_user() {
-    when(patrawinDao.findUsername(anyString())).thenReturn(Optional.empty());
-
-    assertThat(connector.postTime(fakeRequest(), fakeEntities.randomTimeGroup()))
-        .isEqualTo(PostResult.PERMANENT_FAILURE)
-        .as("Can't post time because user doesn't exist in Patrawin");
-
-    verifyPatrawinNotUpdated();
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
-  void postTime_cant_find_issue() {
-    when(patrawinDao.findIssueByTagName(anyString())).thenReturn(Optional.empty());
+  void postTime_nonexistent_author_should_fail() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
 
-    assertThat(connector.postTime(fakeRequest(), fakeEntities.randomTimeGroup()))
-        .isEqualTo(PostResult.PERMANENT_FAILURE)
-        .as("Can't post time because tag doesn't match any issue in Patrawin");
+    when(patrawinDao.doesUserExist(anyString()))
+        .thenReturn(false);
 
-    verifyPatrawinNotUpdated();
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
+
+    verify(patrawinDao, times(1)).doesUserExist(anyString());
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
   }
 
+  @Test
+  void postTime_email_used_when_no_externalId() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().user(
+        fakeEntities.randomUser().externalId(null).email("email@domain.com")
+    );
+
+    ArgumentCaptor<String> userIdentityCaptor = ArgumentCaptor.forClass(String.class);
+    when(patrawinDao.doesUserExist(userIdentityCaptor.capture()))
+        .thenReturn(false);
+
+    connector.postTime(mock(Request.class), timeGroup);
+
+    assertThat(userIdentityCaptor.getValue())
+        .isEqualTo("email@domain.com");
+  }
+
+  @Test
+  void postTime_different_timerow_modifiers_should_fail() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeEntities.randomTimeRow().modifier("1"),
+        fakeEntities.randomTimeRow().modifier(null)));
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
+
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+  }
+
+  @Test
+  void postTime_no_timerow_modifiers_no_default_should_fail() {
+    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, null);
+
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeEntities.randomTimeRow().modifier(null),
+        fakeEntities.randomTimeRow().modifier(null)));
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
+
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+  }
+
+  @Test
+  void postTime_default_modifier_used_when_no_timegroup_modifier() {
+    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, "5");
+
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeEntities.randomTimeRow().modifier(null)));
+
+    ArgumentCaptor<Integer> modifierCaptor = ArgumentCaptor.forClass(Integer.class);
+    when(patrawinDao.doesActivityCodeExist(modifierCaptor.capture()))
+        .thenReturn(false);
+
+    connector.postTime(mock(Request.class), timeGroup);
+
+    assertThat(modifierCaptor.getValue())
+        .isEqualTo(5);
+  }
+
+  @Test
+  void postTime_modifier_invalid_integer_should_fail() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeEntities.randomTimeRow().modifier("Modifier")));
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
+
+    verify(patrawinDao, never()).doesActivityCodeExist(anyInt());
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+  }
+
+  @Test
+  void postTime_nonexistent_activity_code_should_fail() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
+
+    when(patrawinDao.doesActivityCodeExist(anyInt()))
+        .thenReturn(false);
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
+
+    verify(patrawinDao, times(1)).doesActivityCodeExist(anyInt());
+    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+  }
+
+  /*
   @Test
   void postTime_db_transaction_error() {
     final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
@@ -296,13 +367,4 @@ public class PatrawinConnectorPostTimeTest {
 
     verifyPatrawinNotUpdated();
   }*/
-
-  private void verifyPatrawinNotUpdated() {
-    /*verify(patrawinDao, never()).updateIssueTimeSpent(anyLong(), anyLong());
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));*/
-  }
-
-  private Request fakeRequest() {
-    return mock(Request.class);
-  }
 }

@@ -204,12 +204,13 @@ public class PatrawinConnector implements WiseTimeConnector {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group contains different modifiers " + timeGroupModifiers);
     }
 
+    final String timeGroupModifier = timeGroupModifiers.iterator().next();
     final Optional<String> defaultModifier = RuntimeConfig.getString(PatrawinConnectorConfigKey.DEFAULT_MODIFIER);
-    if (timeGroupModifiers.size() == 0 && !defaultModifier.isPresent()) {
+    if (StringUtils.isEmpty(timeGroupModifier) && !defaultModifier.isPresent()) {
       return PostResult.PERMANENT_FAILURE.withMessage("No modifier found for the time group.");
     }
 
-    final String modifier = (timeGroupModifiers.size() == 0) ? timeGroupModifiers.iterator().next() : defaultModifier.get();
+    final String modifier = StringUtils.isEmpty(timeGroupModifier) ? defaultModifier.get() : timeGroupModifier;
 
     int activityCode;
     try {
@@ -231,7 +232,7 @@ public class PatrawinConnector implements WiseTimeConnector {
       return Optional.empty();
     };
 
-    final String messageBody = narrativeFormatter.format(timeGroup);
+    final String narrative = narrativeFormatter.format(timeGroup);
     final Instant activityStartTimeInstant = timeDbFormatter.convert(activityStartTime.get());
     final long chargeableTimeSeconds = DurationCalculator
         .of(timeGroup)
@@ -244,7 +245,7 @@ public class PatrawinConnector implements WiseTimeConnector {
           .caseOrClientId(caseOrClientId)
           .usernameOrEmail(authorUsernameOrEmail)
           .activityCode(activityCode)
-          .narrative(messageBody)
+          .narrative(narrative)
           .startTime(activityStartTimeInstant)
           .durationSeconds(timeGroup.getTotalDurationSecs())
           .chargableTimeSeconds(chargeableTimeSeconds)

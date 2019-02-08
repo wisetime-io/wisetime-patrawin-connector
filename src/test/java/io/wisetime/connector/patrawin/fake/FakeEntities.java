@@ -30,7 +30,9 @@ public class FakeEntities {
   private static final String TAG_PATH = format("/%s/%s/", FAKER.lorem().word(), FAKER.lorem().word());
 
   public TimeGroup randomTimeGroup() {
-    final List<TimeRow> timeRows = randomEntities(this::randomTimeRow, 1, 10);
+    final String validTimeRowModifier = validTimeRowModifier();
+    final Supplier<TimeRow> timeRowSupplier = () -> randomTimeRow(validTimeRowModifier);
+    final List<TimeRow> timeRows = randomEntities(timeRowSupplier, 1, 10);
 
     return new TimeGroup()
         .callerKey(FAKER.bothify("#?#?#?#?#?"))
@@ -73,8 +75,16 @@ public class FakeEntities {
         .activityHour(2018110100 + FAKER.random().nextInt(1, 23))
         .durationSecs(FAKER.random().nextInt(120, 600))
         .submittedDate(Long.valueOf(FAKER.numerify("20180#1#1#5#2####")))
-        .modifier(FAKER.lorem().word())
+        .modifier(validTimeRowModifier())
         .source(randomEnum(TimeRow.SourceEnum.class));
+  }
+
+  public TimeRow randomTimeRow(String modifier) {
+    return randomTimeRow().modifier(modifier);
+  }
+
+  private String validTimeRowModifier() {
+    return String.valueOf(FAKER.number().randomNumber());
   }
 
   private <T> List<T> randomEntities(final Supplier<T> supplier, final int min, final int max) {

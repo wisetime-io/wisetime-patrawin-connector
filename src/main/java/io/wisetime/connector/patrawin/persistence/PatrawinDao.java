@@ -29,7 +29,7 @@ import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
 import io.wisetime.connector.patrawin.model.ImmutableCase;
 import io.wisetime.connector.patrawin.model.ImmutableClient;
-import io.wisetime.connector.patrawin.model.ImmutableWorklog;
+import io.wisetime.connector.patrawin.model.Worklog;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 
 import static java.util.stream.Collectors.groupingBy;
@@ -174,44 +174,31 @@ public class PatrawinDao {
    * The parameters for post_time are as follows:
    *
    * @case_or_client_id nvarchar
-   * @pnStaffMemberId int,
-   * @pdtEntryDate datetime, -- in yyyy-MM-dd format
-   * @pnCaseId int = null,
-   * @psActivityCode nvarchar(6),
-   * @pdtTimePeriod datetime, -- in 1899-01-01 HH:mm:ss:SSS format where the HH:mm:ss:SSS is the period between @pdtStartTime
-   * and @pdtEndTime
-   * @pdtStartTime datetime = null, -- in yyyy-MM-dd HH:mm:ss:SSS format
-   * @pdtEndTime datetime = null, -- in yyyy-MM-dd HH:mm:ss:SSS format
-   * @psNarrative nvarchar(max) = null
+   * @username_or_email nvarchar
+   * @activity_code int
+   * @narrative nvarchar(max)
+   * @narrative_internal_note
+   * @start_time datetimeoffset
+   * @total_time_secs bigint
+   * @chargeable_time_secs bigint
+   *
+   * Return codes: SUCCESS, CASE_OR_CLIENT_ID_NOT_FOUND, USER_NOT_FOUND, ACTIVITY_CODE_NOT_FOUND
    */
-  public void createWorklog(ImmutableWorklog worklog) {
-    /*query().update("EXEC post_time " +
-        "@pnStaffMemberId = :pnStaffMemberId, " +
-        "@pdtEntryDate    = :pdtEntryDate, " +
-        "@pnCaseId        = :pnCaseId, " +
-        "@psActivityCode  = :psActivityCode, " +
-        "@pdtTimePeriod   = :pdtTimePeriod, " +
-        "@pdtStartTime    = :pdtStartTime, " +
-        "@pdtEndTime      = :pdtEndTime, " +
-        "@psNarrative     = :psNarrative ")
-        .namedParam("pnStaffMemberId", worklog.getStaffKey())
-        .namedParam("pdtEntryDate",
-            ZonedDateTime.of(worklog.getEntryDate(), ZoneOffset.UTC)
-                .withZoneSameInstant(getTimeZone())
-                .format(DATE_FORMAT))
-        .namedParam("pnCaseId", worklog.getCaseId())
-        .namedParam("psActivityCode", worklog.getActivityCode())
-        .namedParam("pdtTimePeriod", worklog.getTimePeriod().format(DATE_TIME_FORMAT))
-        .namedParam("pdtStartTime",
-            ZonedDateTime.of(worklog.getStartTime(), ZoneOffset.UTC)
-                .withZoneSameInstant(getTimeZone())
-                .format(DATE_TIME_FORMAT))
-        .namedParam("pdtEndTime",
-            ZonedDateTime.of(worklog.getEndTime(), ZoneOffset.UTC)
-                .withZoneSameInstant(getTimeZone())
-                .format(DATE_TIME_FORMAT))
-        .namedParam("psNarrative", worklog.getNarrative())
-        .run();*/
+  public void createWorklog(Worklog worklog) {
+    query().update("EXEC post_time " +
+        "@case_or_client_id = :case_or_client_id, " +
+        "@username_or_email = :username_or_email, " +
+        "@activity_code     = :activity_code, " +
+        "@narrative         = :narrative, " +
+        "@start_time        = :start_time, " +
+        "@total_time_secs   = :total_time_secs")
+        .namedParam("case_or_client_id", worklog.getCaseOrClientId())
+        .namedParam("username_or_email", worklog.getUsernameOrEmail())
+        .namedParam("activity_code", worklog.getActivityCode())
+        .namedParam("narrative", worklog.getNarrative())
+        .namedParam("start_time", worklog.getStartTime()) // TODO: format
+        .namedParam("total_time_secs", worklog.getChargableTimeSeconds()) // TODO: OR worklog.getDurationSeconds()
+        .run();
   }
 
   public boolean canQueryDb() {
