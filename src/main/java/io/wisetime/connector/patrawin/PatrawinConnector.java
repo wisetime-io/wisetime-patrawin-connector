@@ -73,7 +73,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     this.syncStore = createSyncStore(connectorModule.getConnectorStore());
     this.narrativeFormatter = new TemplateFormatter(
         TemplateFormatterConfig.builder()
-            .withTemplatePath("classpath:patrawin-template.ftl")
+            .withTemplatePath("classpath:timegroup-narrative-template.ftl")
             .build()
     );
   }
@@ -216,7 +216,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     try {
       activityCode = Integer.parseInt(modifier);
     } catch (NumberFormatException e) {
-      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid modifier " + modifier);
+      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid format of the modifier " + modifier);
     }
 
     if (!patrawinDao.doesActivityCodeExist(activityCode)) {
@@ -234,10 +234,10 @@ public class PatrawinConnector implements WiseTimeConnector {
 
     final String narrative = narrativeFormatter.format(timeGroup);
     final Instant activityStartTimeInstant = timeDbFormatter.convert(activityStartTime.get());
-    final long chargeableTimeSeconds = DurationCalculator
-        .of(timeGroup)
+    final int chargeableTimeSeconds = Math.round(DurationCalculator.of(timeGroup)
+        .useExperienceRating()
         .calculate()
-        .getPerTagDuration();
+        .getPerTagDuration());
 
     final Function<String, String> createWorklog = caseOrClientId -> {
       final ImmutableWorklog worklog = ImmutableWorklog
@@ -247,8 +247,8 @@ public class PatrawinConnector implements WiseTimeConnector {
           .activityCode(activityCode)
           .narrative(narrative)
           .startTime(activityStartTimeInstant)
-          .durationSeconds(timeGroup.getTotalDurationSecs())
-          .chargableTimeSeconds(chargeableTimeSeconds)
+          .durationSeconds(timeGroup.getTotalDurationSecs()) // modified by the user
+          .chargeableTimeSeconds(chargeableTimeSeconds)
           .build();
 
       patrawinDao.createWorklog(worklog);
@@ -277,8 +277,8 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   @VisibleForTesting
-  Set<String> getTimeGroupModifiers(final TimeGroup timeRows) {
-    return timeRows.getTimeRows().stream()
+  Set<String> getTimeGroupModifiers(final TimeGroup timeGroup) {
+    return timeGroup.getTimeRows().stream()
         .map(TimeRow::getModifier)
         .collect(Collectors.toSet());
   }

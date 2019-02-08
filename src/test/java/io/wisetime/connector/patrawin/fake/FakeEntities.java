@@ -23,6 +23,7 @@ import static java.lang.String.format;
  * Generator of entities with random field values. Typically used to mock real data.
  *
  * @author shane.xie@practiceinsight.io
+ * @author galya.bogdanova@m.practiceinsight.io
  */
 public class FakeEntities {
 
@@ -73,6 +74,7 @@ public class FakeEntities {
     return new TimeRow()
         .activity(FAKER.lorem().characters(30, 100))
         .activityHour(2018110100 + FAKER.random().nextInt(1, 23))
+        .firstObservedInHour(FAKER.number().numberBetween(0, 59))
         .durationSecs(FAKER.random().nextInt(120, 600))
         .submittedDate(Long.valueOf(FAKER.numerify("20180#1#1#5#2####")))
         .modifier(validTimeRowModifier())

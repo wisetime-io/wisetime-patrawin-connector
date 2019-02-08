@@ -197,7 +197,7 @@ public class PatrawinDao {
         .namedParam("activity_code", worklog.getActivityCode())
         .namedParam("narrative", worklog.getNarrative())
         .namedParam("start_time", worklog.getStartTime()) // TODO: format
-        .namedParam("total_time_secs", worklog.getChargableTimeSeconds()) // TODO: OR worklog.getDurationSeconds()
+        .namedParam("total_time_secs", worklog.getChargeableTimeSeconds()) // TODO: OR worklog.getDurationSeconds()
         .run();
   }
 

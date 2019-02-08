@@ -33,11 +33,9 @@ public interface Worklog {
    */
   String getNarrative();
 
-  String getNarrativeNotes();
-
   Instant getStartTime();
 
-  long getDurationSeconds();
+  int getDurationSeconds();
 
-  long getChargableTimeSeconds();
+  int getChargeableTimeSeconds();
 }

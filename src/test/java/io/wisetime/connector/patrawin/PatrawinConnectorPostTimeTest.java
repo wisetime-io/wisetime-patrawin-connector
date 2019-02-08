@@ -13,6 +13,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
+import java.time.Instant;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
 import io.wisetime.connector.config.ConnectorConfigKey;
@@ -20,12 +25,11 @@ import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.patrawin.fake.FakeEntities;
-import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
 import io.wisetime.connector.patrawin.model.Worklog;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
 import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
-import io.wisetime.connector.template.TemplateFormatter;
+import io.wisetime.generated.connect.Tag;
 import io.wisetime.generated.connect.TimeGroup;
 import spark.Request;
 
@@ -35,6 +39,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.reset;
@@ -50,11 +55,10 @@ public class PatrawinConnectorPostTimeTest {
 
   private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
   private static ApiClient apiClient = mock(ApiClient.class);
-  private static TemplateFormatter narrativeFormatter = mock(TemplateFormatter.class);
+  // private static TemplateFormatter narrativeFormatter = mock(TemplateFormatter.class);
 
   private static PatrawinConnector connector;
   private static FakeEntities fakeEntities = new FakeEntities();
-  private static RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
 
   @BeforeAll
   static void setUp() {
@@ -74,10 +78,14 @@ public class PatrawinConnectorPostTimeTest {
   void setUpTest() {
     RuntimeConfig.clearProperty(ConnectorConfigKey.CALLER_KEY);
 
-    reset(narrativeFormatter);
+    // reset(narrativeFormatter);
     reset(patrawinDao);
 
     when(patrawinDao.doesUserExist(anyString()))
+        .thenReturn(true);
+    when(patrawinDao.doesActivityCodeExist(anyInt()))
+        .thenReturn(true);
+    when(patrawinDao.doesCaseExist(anyString()))
         .thenReturn(true);
 
     // Ensure that code in the transaction lambda gets exercised
@@ -221,150 +229,159 @@ public class PatrawinConnectorPostTimeTest {
     verify(patrawinDao, never()).createWorklog(any(Worklog.class));
   }
 
-  /*
   @Test
   void postTime_db_transaction_error() {
     final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
 
-    when(patrawinDao.findUsername(anyString()))
-        .thenReturn(Optional.of(timeGroup.getUser().getExternalId()));
+    RuntimeException createWorklogException = new RuntimeException("Test exception");
+    doThrow(createWorklogException)
+        .when(patrawinDao)
+        .createWorklog(any(Worklog.class));
 
-    final Tag tag = fakeEntities.randomTag("/Patrawin/");
-    final Issue issue = randomDataGenerator.randomIssue(tag.getName());
+    when(patrawinDao.doesCaseExist(anyString()))
+        .thenReturn(true);
 
-    when(patrawinDao.findIssueByTagName(anyString())).thenReturn(Optional.of(issue));
-    when(templateFormatter.format(any(TimeGroup.class))).thenReturn("Work log body");
-    doThrow(new RuntimeException("Test exception")).when(patrawinDao).createWorklog(any(Worklog.class));
-
-    final PostResult result = connector.postTime(fakeRequest(), fakeEntities.randomTimeGroup());
+    final PostResult result = connector.postTime(mock(Request.class), timeGroup);
 
     assertThat(result)
-        .isEqualTo(PostResult.TRANSIENT_FAILURE)
-        .as("Database transaction error while posting time should result in transient failure");
-
+        .isEqualTo(PostResult.TRANSIENT_FAILURE);
+    assertThat(result.getError().isPresent())
+        .isTrue();
     assertThat(result.getError().get())
-        .isInstanceOf(RuntimeException.class)
-        .as("Post result should contain the cause of the error");
+        .isEqualTo(createWorklogException);
   }
 
   @Test
   void postTime_with_valid_group_should_succeed() {
-    final Tag tag1 = fakeEntities.randomTag("/Patrawin/");
-    final Tag tag2 = fakeEntities.randomTag("/Patrawin/");
-    final Tag tag3 = fakeEntities.randomTag("/Patrawin/");
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
 
-    final TimeRow timeRow1 = fakeEntities.randomTimeRow().activityHour(2018110110);
-    final TimeRow timeRow2 = fakeEntities.randomTimeRow().activityHour(2018110109);
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.SUCCESS);
+  }
 
-    final User user = fakeEntities.randomUser().experienceWeightingPercent(50);
+  /**
+   * Should first check for case and then for client.
+   */
+  @Test
+  void postTime_create_worklog_for_each_valid_tag() {
+    final Tag existentCaseTag = fakeEntities.randomTag();
+    final Tag nonexistentCaseOrClientTag = fakeEntities.randomTag();
+    final Tag existentClientTag = fakeEntities.randomTag();
 
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
-        .tags(ImmutableList.of(tag1, tag2, tag3))
-        .timeRows(ImmutableList.of(timeRow1, timeRow2))
-        .user(user)
-        .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
-        .totalDurationSecs(1500);
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().tags(
+        Arrays.asList(existentCaseTag, nonexistentCaseOrClientTag, existentClientTag));
 
-    when(patrawinDao.findUsername(anyString()))
-        .thenReturn(Optional.of(timeGroup.getUser().getExternalId()));
+    when(patrawinDao.doesCaseExist(existentCaseTag.getName()))
+        .thenReturn(true);
+    when(patrawinDao.doesCaseExist(nonexistentCaseOrClientTag.getName()))
+        .thenReturn(false);
+    when(patrawinDao.doesCaseExist(existentClientTag.getName()))
+        .thenReturn(false);
 
-    final Issue issue1 = randomDataGenerator.randomIssue(tag1.getName());
-    final Issue issue2 = randomDataGenerator.randomIssue(tag1.getName());
+    when(patrawinDao.doesClientExist(nonexistentCaseOrClientTag.getName()))
+        .thenReturn(false);
+    when(patrawinDao.doesClientExist(existentClientTag.getName()))
+        .thenReturn(true);
 
-    when(patrawinDao.findIssueByTagName(anyString()))
-        .thenReturn(Optional.of(issue1))
-        .thenReturn(Optional.of(issue2))
-        // Last tag has no matching Patrawin issue
-        .thenReturn(Optional.empty());
-
-    when(templateFormatter.format(any(TimeGroup.class)))
-        .thenReturn("Work log body");
-
-    assertThat(connector.postTime(fakeRequest(), timeGroup))
-        .as("Valid time group should be posted successfully")
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
 
-    // Verify worklog creation
+    verify(patrawinDao, times(3)).doesCaseExist(anyString());
+    verify(patrawinDao, times(2)).doesClientExist(anyString());
+
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDao, times(2)).createWorklog(worklogCaptor.capture());
+
     List<Worklog> createdWorklogs = worklogCaptor.getAllValues();
 
-    assertThat(createdWorklogs.get(0).getIssueId())
-        .isEqualTo(issue1.getId())
-        .as("The worklog should be assigned to the right issue");
-
-    assertThat(createdWorklogs.get(1).getIssueId())
-        .isEqualTo(issue2.getId())
-        .as("The worklog should be assigned to the right issue");
-
-    assertThat(createdWorklogs.get(0).getAuthor())
-        .isEqualTo(timeGroup.getUser().getExternalId())
-        .as("The author should be set to the posted time user's external ID");
-
-    assertThat(createdWorklogs.get(0).getBody())
-        .isNotEmpty();
-
-    assertThat(createdWorklogs.get(0).getCreated())
-        .isEqualTo(LocalDateTime.of(2018, 11, 1, 9, 0))
-        .as("The worklog should be created with the earliest time row start time");
-
-    assertThat(createdWorklogs.get(0).getTimeWorked())
-        .isEqualTo(250)
-        .as("The time worked should take into account the user's experience rating and" +
-            "be split equally between the two tags");
-
-    ArgumentCaptor<Long> idUpdateIssueCaptor = ArgumentCaptor.forClass(Long.class);
-    ArgumentCaptor<Long> timeSpentUpdateIssueCaptor = ArgumentCaptor.forClass(Long.class);
-    verify(patrawinDao, times(2))
-        .updateIssueTimeSpent(idUpdateIssueCaptor.capture(), timeSpentUpdateIssueCaptor.capture());
-
-    List<Long> updatedIssueIds = idUpdateIssueCaptor.getAllValues();
-    assertThat(updatedIssueIds)
-        .containsExactly(issue1.getId(), issue2.getId())
-        .as("Time spent of both matching issues should be updated");
-
-    List<Long> updatedIssueTimes = timeSpentUpdateIssueCaptor.getAllValues();
-    assertThat(updatedIssueTimes)
-        .containsExactly(issue1.getTimeSpent() + 250, issue2.getTimeSpent() + 250)
-        .as("Time spent of both matching issues should be updated with new duration. The duration should be " +
-            "split among the three tags even if one of them was not found.");
+    assertThat(createdWorklogs)
+        .hasSize(2);
+    assertThat(createdWorklogs.get(0).getCaseOrClientId())
+        .isEqualTo(existentCaseTag.getName());
+    assertThat(createdWorklogs.get(1).getCaseOrClientId())
+        .isEqualTo(existentClientTag.getName());
   }
 
   @Test
-  void postTime_should_only_handle_configured_project_keys() {
-    final Tag tagWt = fakeEntities.randomTag("/Patrawin/").name("WT-2");
-    final Tag tagOther = fakeEntities.randomTag("/Patrawin/").name("OTHER-1");
-    final TimeGroup timeGroup = fakeEntities
-        .randomTimeGroup()
-        .tags(ImmutableList.of(tagWt, tagOther));
+  void postTime_worklog_has_valid_author_id() {
+    final String userExternalId = "ExternalId";
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
+        .user(fakeEntities.randomUser().externalId(userExternalId))
+        .tags(ImmutableList.of(fakeEntities.randomTag()));
 
-    when(patrawinDao.findUsername(anyString()))
-        .thenReturn(Optional.of(timeGroup.getUser().getExternalId()));
-
-    connector.postTime(fakeRequest(), timeGroup);
-
-    ArgumentCaptor<String> tagNameCaptor = ArgumentCaptor.forClass(String.class);
-    verify(patrawinDao, times(1)).findIssueByTagName(tagNameCaptor.capture());
-
-    assertThat(tagNameCaptor.getValue())
-        .isEqualTo("WT-2")
-        .as("Only configured project keys should be handled when posting time");
-  }
-
-  @Test
-  void postTime_should_handle_tags_not_matching_project_keys_filter() {
-    final Tag tagOther = fakeEntities.randomTag("/Patrawin/").name("OTHER-1");
-    final TimeGroup timeGroup = fakeEntities
-        .randomTimeGroup()
-        .tags(ImmutableList.of(tagOther));
-
-    when(patrawinDao.findUsername(anyString()))
-        .thenReturn(Optional.of(timeGroup.getUser().getExternalId()));
-
-    assertThat(connector.postTime(fakeRequest(), timeGroup))
-        .as("There is nothing to post to Patrawin")
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
 
-    verifyPatrawinNotUpdated();
-  }*/
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+
+    assertThat(worklogCaptor.getValue().getUsernameOrEmail())
+        .isEqualTo(userExternalId);
+  }
+
+  @Test
+  void postTime_worklog_narrative_contains_valid_data() {
+    /*final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.SUCCESS);*/
+  }
+
+  @Test
+  void postTime_worklog_has_valid_start_time() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
+        .timeRows(ImmutableList.of(
+            fakeEntities.randomTimeRow().modifier("1").activityHour(2018110115),
+            fakeEntities.randomTimeRow().modifier("1").activityHour(2018110114)))
+        .tags(Collections.singletonList(fakeEntities.randomTag()));
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+
+    final Instant expectedActivityStartTime = Instant.ofEpochSecond(1541080800);
+    assertThat(worklogCaptor.getValue().getStartTime())
+        .isEqualTo(expectedActivityStartTime);
+  }
+
+  /**
+   * Total duration could be modified by the user.
+   */
+  @Test
+  void postTime_worklog_has_valid_duration() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
+        .tags(Collections.singletonList(fakeEntities.randomTag()));
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+
+    assertThat(worklogCaptor.getValue().getDurationSeconds())
+        .isEqualTo(timeGroup.getTotalDurationSecs());
+  }
+
+  /**
+   * Total duration could be modified by the user.
+   */
+  @Test
+  void postTime_worklog_has_valid_chargeable_time() {
+    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
+        .totalDurationSecs(1000)
+        .user(fakeEntities.randomUser().experienceWeightingPercent(40))
+        .tags(Collections.singletonList(fakeEntities.randomTag())); // getPerTagDuration ?? strategy
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+
+    final int expectedChargeableTimeSeconds = 400;
+    assertThat(worklogCaptor.getValue().getChargeableTimeSeconds())
+        .isEqualTo(expectedChargeableTimeSeconds);
+  }
 }
