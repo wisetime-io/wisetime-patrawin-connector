@@ -10,7 +10,7 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 import java.util.Set;
 
 import io.wisetime.connector.datastore.ConnectorStore;
-import io.wisetime.connector.patrawin.fake.FakeEntities;
+import io.wisetime.connector.patrawin.fake.FakeTimeGroupGenerator;
 import io.wisetime.connector.patrawin.persistence.SyncStore;
 import io.wisetime.generated.connect.TimeGroup;
 
@@ -35,7 +35,7 @@ public class PatrawinConnectorUtilsTest {
   @Test
   void getTimeGroupModifiers_returns_all_unique_timerow_modifiers() {
     final PatrawinConnector connector = new PatrawinConnector();
-    final FakeEntities fakeEntities = new FakeEntities();
+    final FakeTimeGroupGenerator fakeEntities = new FakeTimeGroupGenerator();
     final String modifier1 = "123";
     final String modifier2 = null;
     final String modifier3 = "Modifier";

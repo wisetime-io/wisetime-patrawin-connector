@@ -24,7 +24,7 @@ import io.wisetime.connector.config.ConnectorConfigKey;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
-import io.wisetime.connector.patrawin.fake.FakeEntities;
+import io.wisetime.connector.patrawin.fake.FakeTimeGroupGenerator;
 import io.wisetime.connector.patrawin.model.Worklog;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
 import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
@@ -58,7 +58,7 @@ public class PatrawinConnectorPostTimeTest {
   // private static TemplateFormatter narrativeFormatter = mock(TemplateFormatter.class);
 
   private static PatrawinConnector connector;
-  private static FakeEntities fakeEntities = new FakeEntities();
+  private static FakeTimeGroupGenerator fakeGenerator = new FakeTimeGroupGenerator();
 
   @BeforeAll
   static void setUp() {
@@ -99,7 +99,7 @@ public class PatrawinConnectorPostTimeTest {
   void postTime_with_invalid_caller_key_should_fail() {
     RuntimeConfig.setProperty(ConnectorConfigKey.CALLER_KEY, "caller-key");
 
-    final TimeGroup groupWithNoTags = fakeEntities
+    final TimeGroup groupWithNoTags = fakeGenerator
         .randomTimeGroup()
         .callerKey("wrong-key")
         .tags(ImmutableList.of());
@@ -112,7 +112,7 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_without_tags_should_succeed() {
-    final TimeGroup groupWithNoTags = fakeEntities.randomTimeGroup().tags(ImmutableList.of());
+    final TimeGroup groupWithNoTags = fakeGenerator.randomTimeGroup().tags(ImmutableList.of());
 
     assertThat(connector.postTime(mock(Request.class), groupWithNoTags))
         .isEqualTo(PostResult.SUCCESS);
@@ -122,7 +122,7 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_without_time_rows_should_fail() {
-    final TimeGroup groupWithNoTimeRows = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of());
+    final TimeGroup groupWithNoTimeRows = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of());
 
     assertThat(connector.postTime(mock(Request.class), groupWithNoTimeRows))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
@@ -132,7 +132,7 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_nonexistent_author_should_fail() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
 
     when(patrawinDao.doesUserExist(anyString()))
         .thenReturn(false);
@@ -146,8 +146,8 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_email_used_when_no_externalId() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().user(
-        fakeEntities.randomUser().externalId(null).email("email@domain.com")
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().user(
+        fakeGenerator.randomUser().externalId(null).email("email@domain.com")
     );
 
     ArgumentCaptor<String> userIdentityCaptor = ArgumentCaptor.forClass(String.class);
@@ -162,9 +162,9 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_different_timerow_modifiers_should_fail() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeEntities.randomTimeRow().modifier("1"),
-        fakeEntities.randomTimeRow().modifier(null)));
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeGenerator.randomTimeRow().modifier("1"),
+        fakeGenerator.randomTimeRow().modifier(null)));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
@@ -176,9 +176,9 @@ public class PatrawinConnectorPostTimeTest {
   void postTime_no_timerow_modifiers_no_default_should_fail() {
     RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, null);
 
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeEntities.randomTimeRow().modifier(null),
-        fakeEntities.randomTimeRow().modifier(null)));
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeGenerator.randomTimeRow().modifier(null),
+        fakeGenerator.randomTimeRow().modifier(null)));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
@@ -190,8 +190,8 @@ public class PatrawinConnectorPostTimeTest {
   void postTime_default_modifier_used_when_no_timegroup_modifier() {
     RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, "5");
 
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeEntities.randomTimeRow().modifier(null)));
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeGenerator.randomTimeRow().modifier(null)));
 
     ArgumentCaptor<Integer> modifierCaptor = ArgumentCaptor.forClass(Integer.class);
     when(patrawinDao.doesActivityCodeExist(modifierCaptor.capture()))
@@ -205,8 +205,8 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_modifier_invalid_integer_should_fail() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeEntities.randomTimeRow().modifier("Modifier")));
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
+        fakeGenerator.randomTimeRow().modifier("Modifier")));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
@@ -217,7 +217,7 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_nonexistent_activity_code_should_fail() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
 
     when(patrawinDao.doesActivityCodeExist(anyInt()))
         .thenReturn(false);
@@ -231,7 +231,7 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_db_transaction_error() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
 
     RuntimeException createWorklogException = new RuntimeException("Test exception");
     doThrow(createWorklogException)
@@ -253,7 +253,7 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_with_valid_group_should_succeed() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
@@ -264,11 +264,11 @@ public class PatrawinConnectorPostTimeTest {
    */
   @Test
   void postTime_create_worklog_for_each_valid_tag() {
-    final Tag existentCaseTag = fakeEntities.randomTag();
-    final Tag nonexistentCaseOrClientTag = fakeEntities.randomTag();
-    final Tag existentClientTag = fakeEntities.randomTag();
+    final Tag existentCaseTag = fakeGenerator.randomTag();
+    final Tag nonexistentCaseOrClientTag = fakeGenerator.randomTag();
+    final Tag existentClientTag = fakeGenerator.randomTag();
 
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup().tags(
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().tags(
         Arrays.asList(existentCaseTag, nonexistentCaseOrClientTag, existentClientTag));
 
     when(patrawinDao.doesCaseExist(existentCaseTag.getName()))
@@ -305,9 +305,9 @@ public class PatrawinConnectorPostTimeTest {
   @Test
   void postTime_worklog_has_valid_author_id() {
     final String userExternalId = "ExternalId";
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
-        .user(fakeEntities.randomUser().externalId(userExternalId))
-        .tags(ImmutableList.of(fakeEntities.randomTag()));
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .user(fakeGenerator.randomUser().externalId(userExternalId))
+        .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
@@ -321,7 +321,8 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_worklog_narrative_contains_valid_data() {
-    /*final TimeGroup timeGroup = fakeEntities.randomTimeGroup();
+    /*final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
+
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);*/
@@ -329,11 +330,11 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_worklog_has_valid_start_time() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .timeRows(ImmutableList.of(
-            fakeEntities.randomTimeRow().modifier("1").activityHour(2018110115),
-            fakeEntities.randomTimeRow().modifier("1").activityHour(2018110114)))
-        .tags(Collections.singletonList(fakeEntities.randomTag()));
+            fakeGenerator.randomTimeRow().modifier("1").activityHour(2018110115),
+            fakeGenerator.randomTimeRow().modifier("1").activityHour(2018110114)))
+        .tags(Collections.singletonList(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
@@ -351,8 +352,8 @@ public class PatrawinConnectorPostTimeTest {
    */
   @Test
   void postTime_worklog_has_valid_duration() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
-        .tags(Collections.singletonList(fakeEntities.randomTag()));
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .tags(Collections.singletonList(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
@@ -369,10 +370,10 @@ public class PatrawinConnectorPostTimeTest {
    */
   @Test
   void postTime_worklog_has_valid_chargeable_time() {
-    final TimeGroup timeGroup = fakeEntities.randomTimeGroup()
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .totalDurationSecs(1000)
-        .user(fakeEntities.randomUser().experienceWeightingPercent(40))
-        .tags(Collections.singletonList(fakeEntities.randomTag())); // getPerTagDuration ?? strategy
+        .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
+        .tags(Collections.singletonList(fakeGenerator.randomTag())); // getPerTagDuration ?? strategy
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);

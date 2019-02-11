@@ -20,7 +20,7 @@ import io.wisetime.connector.patrawin.model.Client;
 /**
  * @author shane.xie@practiceinsigt.io
  */
-public class RandomDataGenerator {
+public class FakeCaseClientGenerator {
 
   private static final Faker FAKER = new Faker();
 

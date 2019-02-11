@@ -20,6 +20,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 
 import java.time.Instant;
@@ -31,12 +32,16 @@ import javax.sql.DataSource;
 
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.patrawin.ConnectorLauncher;
-import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
+import io.wisetime.connector.patrawin.fake.FakeCaseClientGenerator;
+import io.wisetime.connector.patrawin.fake.FakeTimeGroupGenerator;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
 import io.wisetime.connector.patrawin.model.ImmutableCase;
 import io.wisetime.connector.patrawin.model.ImmutableClient;
+import io.wisetime.connector.patrawin.model.ImmutableWorklog;
+import io.wisetime.connector.patrawin.model.Worklog;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
+import io.wisetime.generated.connect.User;
 
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_PASSWORD;
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_USER;
@@ -45,11 +50,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author shane.xie@practiceinsight.io
+ * @author galya.bogdanova@m.practiceinsight.io
  */
 class PatrawinDaoTest {
 
-  private static RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
-  private static MSSQLServerContainer sqlServerContainer = new MSSQLServerContainer();
+  private static JdbcDatabaseContainer sqlServerContainer = new MSSQLServerContainer();
+  private static FakeCaseClientGenerator fakeCaseClientGenerator = new FakeCaseClientGenerator();
+  private static FakeTimeGroupGenerator fakeTimeGroupGenerator = new FakeTimeGroupGenerator();
 
   private static PatrawinDao patrawinDao;
   private static FluentJdbc fluentJdbc;
@@ -97,13 +104,78 @@ class PatrawinDaoTest {
   }
 
   @Test
+  void doesUserExist() {
+    final User user = fakeTimeGroupGenerator.randomUser();
+    assertThat(createUser(user))
+        .isTrue();
+    assertThat(patrawinDao.doesUserExist(user.getEmail()))
+        .isTrue();
+  }
+
+  @Test
+  void doesCaseExist() {
+    final Case aCase = fakeCaseClientGenerator.randomCase();
+    assertThat(createCase(aCase))
+        .isNotNull();
+    assertThat(patrawinDao.doesCaseExist(aCase.getId()))
+        .isTrue();
+  }
+
+  @Test
+  void doesClientExist() {
+    final Client client = fakeCaseClientGenerator.randomClient();
+    assertThat(createClient(client))
+        .isNotNull();
+    assertThat(patrawinDao.doesClientExist(client.getId()))
+        .isTrue();
+  }
+
+  @Test
+  void doesActivityCodeExist() {
+    final int activityCode = 1;
+    assertThat(createActivityCode(activityCode))
+        .isTrue();
+    assertThat(patrawinDao.doesActivityCodeExist(activityCode))
+        .isTrue();
+  }
+
+  @Test
+  void createWorklog() {
+    final Case aCase = fakeCaseClientGenerator.randomCase();
+    assertThat(createCase(aCase))
+        .isNotNull();
+
+    final User user = fakeTimeGroupGenerator.randomUser();
+    assertThat(createUser(user))
+        .isTrue();
+
+    final int activityCode = 2;
+    assertThat(createActivityCode(activityCode))
+        .isTrue();
+
+    final Worklog worklog = ImmutableWorklog.builder()
+        .caseOrClientId(aCase.getId())
+        .usernameOrEmail(user.getExternalId())
+        .activityCode(activityCode)
+        .narrative("")
+        .startTime(Instant.now().minus(10, ChronoUnit.HOURS))
+        .durationSeconds(2 * 60 * 60)
+        .chargeableTimeSeconds(2 * 60 * 60)
+        .build();
+    // TODO: assert against the result
+    // patrawinDao.createWorklog(worklog);
+  }
+
+  @Test
   void findCasesOrderedByCreationTime() {
+    cleanCasesTable();
+
     final Instant now = Instant.now();
-    final Case createdNow1 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withId("B1234"));
-    final Case createdNow2 = createCase(ImmutableCase.copyOf(randomDataGenerator.randomCase(now)).withId("A1234"));
-    final Case createdYesterday = createCase(randomDataGenerator.randomCase(now.minus(1, ChronoUnit.DAYS)));
-    final Case createdLastWeek = createCase(randomDataGenerator.randomCase(now.minus(7, ChronoUnit.DAYS)));
-    final Case createdLast2Weeks = createCase(randomDataGenerator.randomCase(now.minus(14, ChronoUnit.DAYS)));
+    final Case createdNow1 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withId("B1234"));
+    final Case createdNow2 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withId("A1234"));
+    final Case createdYesterday = createCase(fakeCaseClientGenerator.randomCase(now.minus(1, ChronoUnit.DAYS)));
+    final Case createdLastWeek = createCase(fakeCaseClientGenerator.randomCase(now.minus(7, ChronoUnit.DAYS)));
+    final Case createdLast2Weeks = createCase(fakeCaseClientGenerator.randomCase(now.minus(14, ChronoUnit.DAYS)));
 
     // initial query
     final List<Case> initialClients = patrawinDao.findCasesOrderedByCreationTime(
@@ -129,14 +201,16 @@ class PatrawinDaoTest {
 
   @Test
   void findClientsOrderedByCreationTime() {
+    cleanClientsTable();
+
     final Instant now = Instant.now();
-    final Client createdNow1 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
+    final Client createdNow1 = createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now))
         .withId("123"));
-    final Client createdNow2 = createClient(ImmutableClient.copyOf(randomDataGenerator.randomClient(now))
+    final Client createdNow2 = createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now))
         .withId("122"));
-    final Client createdYesterday = createClient(randomDataGenerator.randomClient(now.minus(1, ChronoUnit.DAYS)));
-    final Client createdLastWeek = createClient(randomDataGenerator.randomClient(now.minus(7, ChronoUnit.DAYS)));
-    final Client createdLast2Weeks = createClient(randomDataGenerator.randomClient(now.minus(14, ChronoUnit.DAYS)));
+    final Client createdYesterday = createClient(fakeCaseClientGenerator.randomClient(now.minus(1, ChronoUnit.DAYS)));
+    final Client createdLastWeek = createClient(fakeCaseClientGenerator.randomClient(now.minus(7, ChronoUnit.DAYS)));
+    final Client createdLast2Weeks = createClient(fakeCaseClientGenerator.randomClient(now.minus(14, ChronoUnit.DAYS)));
 
     // initial query
     final List<Client> initialClients = patrawinDao.findClientsOrderedByCreationTime(
@@ -167,6 +241,33 @@ class PatrawinDaoTest {
         .isTrue();
   }
 
+  private boolean createUser(User patrawinUser) {
+    return fluentJdbc.query()
+        .update("INSERT INTO BEHORIG_50 (Username, Email, Namn, Officeid, Isactive, Isattorney) " +
+            "VALUES (?, ?, ?, 1, 1, 1)")
+        .params(
+            patrawinUser.getExternalId(),
+            patrawinUser.getEmail(),
+            patrawinUser.getName())
+        .run()
+        .affectedRows() == 1;
+  }
+
+  private boolean createActivityCode(int activityCode) {
+    return fluentJdbc.query()
+        .update("INSERT INTO FAKTURATEXTNR_15 (Fakturatextnr, AmountIncludedInStatistics, HoursIncludedInStatistics) " +
+            "VALUES (?, 1, 1)")
+        .params(activityCode)
+        .run()
+        .affectedRows() == 1;
+  }
+
+  private void cleanCasesTable() {
+    fluentJdbc.query()
+        .update("TRUNCATE TABLE ARENDE_1")
+        .run();
+  }
+
   private Case createCase(Case patrawinCase) {
     fluentJdbc.query()
         .update("INSERT INTO ARENDE_1 (Arendenr, Slagord, Skapatdat, Rowguid, Officeid, Electronic_file, " +
@@ -188,6 +289,12 @@ class PatrawinDaoTest {
             .description(rs.getString(2))
             .creationTime(timeDbFormatter.parse(rs.getString(3)))
             .build());
+  }
+
+  private void cleanClientsTable() {
+    fluentJdbc.query()
+        .update("TRUNCATE TABLE KUND_24")
+        .run();
   }
 
   private Client createClient(Client client) {

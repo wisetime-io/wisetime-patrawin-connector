@@ -145,7 +145,7 @@ public class PatrawinDao {
 
   public boolean doesCaseExist(String caseNumber) {
     return query().select("SELECT Arendenr AS CaseNum FROM " + TABLE_NAME_CASE +
-        " WHERE CaseNum = :caseNumber")
+        " WHERE Arendenr = :caseNumber")
         .namedParam("caseNumber", caseNumber)
         .maxRows(1L)
         .firstResult(rs -> rs)
@@ -154,7 +154,7 @@ public class PatrawinDao {
 
   public boolean doesClientExist(String clientId) {
     return query().select("SELECT Kundnr AS ClientId FROM " + TABLE_NAME_CLIENT +
-        " WHERE ClientId = :clientId")
+        " WHERE Kundnr = :clientId")
         .namedParam("clientId", clientId)
         .maxRows(1L)
         .firstResult(rs -> rs)
@@ -177,7 +177,7 @@ public class PatrawinDao {
    * @username_or_email nvarchar
    * @activity_code int
    * @narrative nvarchar(max)
-   * @narrative_internal_note
+   * @narrative_internal_note nvarchar
    * @start_time datetimeoffset
    * @total_time_secs bigint
    * @chargeable_time_secs bigint
@@ -185,19 +185,23 @@ public class PatrawinDao {
    * Return codes: SUCCESS, CASE_OR_CLIENT_ID_NOT_FOUND, USER_NOT_FOUND, ACTIVITY_CODE_NOT_FOUND
    */
   public void createWorklog(Worklog worklog) {
+    // TODO: rework to handle return codes:
+    //  https://github.com/soulwing/fluent-jdbc/wiki/Calling-Stored-Procedures
     query().update("EXEC post_time " +
-        "@case_or_client_id = :case_or_client_id, " +
-        "@username_or_email = :username_or_email, " +
-        "@activity_code     = :activity_code, " +
-        "@narrative         = :narrative, " +
-        "@start_time        = :start_time, " +
-        "@total_time_secs   = :total_time_secs")
+        "@case_or_client_id     = :case_or_client_id, " +
+        "@username_or_email     = :username_or_email, " +
+        "@activity_code         = :activity_code, " +
+        "@narrative             = :narrative, " +
+        "@start_time            = :start_time, " +
+        "@total_time_secs       = :total_time_secs" +
+        "@chargeable_time_secs  = :chargeable_time_secs")
         .namedParam("case_or_client_id", worklog.getCaseOrClientId())
         .namedParam("username_or_email", worklog.getUsernameOrEmail())
         .namedParam("activity_code", worklog.getActivityCode())
         .namedParam("narrative", worklog.getNarrative())
-        .namedParam("start_time", worklog.getStartTime()) // TODO: format
-        .namedParam("total_time_secs", worklog.getChargeableTimeSeconds()) // TODO: OR worklog.getDurationSeconds()
+        .namedParam("start_time", timeDbFormatter.format(worklog.getStartTime()))
+        .namedParam("total_time_secs", worklog.getDurationSeconds())
+        .namedParam("chargeable_time_secs", worklog.getChargeableTimeSeconds())
         .run();
   }
 

@@ -22,7 +22,7 @@ import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
-import io.wisetime.connector.patrawin.fake.RandomDataGenerator;
+import io.wisetime.connector.patrawin.fake.FakeCaseClientGenerator;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
@@ -54,7 +54,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
   private static final String TAG_UPSERT_PATH = "/test/path/";
 
-  private static RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
+  private static FakeCaseClientGenerator fakeGenerator = new FakeCaseClientGenerator();
   private static PatrawinConnector connector;
 
   private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
@@ -94,10 +94,10 @@ public class PatrawinConnectorPerformTagUpdateTest {
   @Test
   void performTagUpdate_data_for_two_loops() {
     when(patrawinDao.findCasesOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(randomDataGenerator.randomCases(3))
+        .thenReturn(fakeGenerator.randomCases(3))
         .thenReturn(ImmutableList.of());
     when(patrawinDao.findClientsOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(randomDataGenerator.randomClients(3))
+        .thenReturn(fakeGenerator.randomClients(3))
         .thenReturn(ImmutableList.of());
 
     connector.performTagUpdate();
@@ -120,7 +120,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
   @Test
   void syncCases_error_during_io() throws IOException {
     when(patrawinDao.findCasesOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(ImmutableList.of(randomDataGenerator.randomCase()));
+        .thenReturn(ImmutableList.of(fakeGenerator.randomCase()));
 
     IOException apiException = new IOException("Expected Exception");
     doThrow(apiException)
@@ -137,8 +137,8 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
   @Test
   void syncCases_some_found() throws IOException {
-    Case case1 = randomDataGenerator.randomCase();
-    Case case2 = randomDataGenerator.randomCase();
+    Case case1 = fakeGenerator.randomCase();
+    Case case2 = fakeGenerator.randomCase();
 
     Instant lastSyncedCaseCreationTime = Instant.EPOCH;
     doReturn(lastSyncedCaseCreationTime)
@@ -201,7 +201,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
   @Test
   void syncClients_error_during_io() throws IOException {
     when(patrawinDao.findClientsOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(ImmutableList.of(randomDataGenerator.randomClient()));
+        .thenReturn(ImmutableList.of(fakeGenerator.randomClient()));
 
     IOException apiException = new IOException("Expected Exception");
     doThrow(apiException)
@@ -218,8 +218,8 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
   @Test
   void syncClients_some_found() throws IOException {
-    Client client1 = randomDataGenerator.randomClient();
-    Client client2 = randomDataGenerator.randomClient();
+    Client client1 = fakeGenerator.randomClient();
+    Client client2 = fakeGenerator.randomClient();
 
     Instant lastSyncedClientCreationTime = Instant.EPOCH;
     doReturn(lastSyncedClientCreationTime)

@@ -25,7 +25,7 @@ import static java.lang.String.format;
  * @author shane.xie@practiceinsight.io
  * @author galya.bogdanova@m.practiceinsight.io
  */
-public class FakeEntities {
+public class FakeTimeGroupGenerator {
 
   private static final Faker FAKER = new Faker();
   private static final String TAG_PATH = format("/%s/%s/", FAKER.lorem().word(), FAKER.lorem().word());
@@ -62,10 +62,13 @@ public class FakeEntities {
   public User randomUser() {
     final String firstName = FAKER.name().firstName();
     final String lastName = FAKER.name().lastName();
+    final String usernameFull = FAKER.name().username();
+    // Usernames in Patrawin DB are up to 6 chars, so externalId will apply the constraint.
+    final String username = usernameFull.length() > 6 ? usernameFull.substring(0, 6) : usernameFull;
     return new User()
         .name(firstName + " " + lastName)
         .email(FAKER.internet().emailAddress(firstName))
-        .externalId(FAKER.internet().emailAddress(firstName + "." + lastName))
+        .externalId(username)
         .businessRole(FAKER.company().profession())
         .experienceWeightingPercent(FAKER.random().nextInt(0, 100));
   }
