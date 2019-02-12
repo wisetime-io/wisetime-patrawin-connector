@@ -11,5 +11,5 @@ ${'\n'}
 <#if getNarrativeType() == "NARRATIVE_AND_TIME_ROW_ACTIVITY_DESCRIPTIONS">
 Total worked time: ${groupTotalDuration?string.@duration}
 </#if>
-Total chargeable time: ${getTotalDurationSecs()?string.@duration}
+Total posted time: ${getTotalDurationSecs()?string.@duration}
 Experience factor: ${getUser().getExperienceWeightingPercent()}%
