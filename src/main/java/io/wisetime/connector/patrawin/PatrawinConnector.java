@@ -247,8 +247,8 @@ public class PatrawinConnector implements WiseTimeConnector {
           .activityCode(activityCode)
           .narrative(narrative)
           .startTime(activityStartTimeInstant)
-          .durationSeconds(timeGroup.getTotalDurationSecs()) // modified by the user
-          .chargeableTimeSeconds(chargeableTimeSeconds) // uses DurationSource.TIME_GROUP, i.e. modified by the user
+          .durationSeconds(timeGroup.getTotalDurationSecs()) // could be modified by the user
+          .chargeableTimeSeconds(chargeableTimeSeconds) // based on time that could be modified by the user
           .build();
 
       patrawinDao.createWorklog(worklog);
