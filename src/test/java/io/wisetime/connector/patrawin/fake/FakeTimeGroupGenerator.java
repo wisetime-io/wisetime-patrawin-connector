@@ -75,12 +75,13 @@ public class FakeTimeGroupGenerator {
 
   public TimeRow randomTimeRow() {
     return new TimeRow()
-        .activity(FAKER.lorem().characters(30, 100))
+        .activity(FAKER.lorem().characters(10, 30))
         .activityHour(2018110100 + FAKER.random().nextInt(1, 23))
         .firstObservedInHour(FAKER.number().numberBetween(0, 59))
         .durationSecs(FAKER.random().nextInt(120, 600))
         .submittedDate(Long.valueOf(FAKER.numerify("20180#1#1#5#2####")))
         .modifier(validTimeRowModifier())
+        .description(FAKER.lorem().sentence())
         .source(randomEnum(TimeRow.SourceEnum.class));
   }
 

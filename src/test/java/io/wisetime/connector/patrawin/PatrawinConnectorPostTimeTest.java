@@ -15,7 +15,6 @@ import org.mockito.ArgumentCaptor;
 
 import java.time.Instant;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import io.wisetime.connector.api_client.ApiClient;
@@ -321,11 +320,30 @@ public class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_worklog_narrative_contains_valid_data() {
-    /*final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
-
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .narrativeType(TimeGroup.NarrativeTypeEnum.AND_TIME_ROW_ACTIVITY_DESCRIPTIONS)
+        .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);*/
+        .isEqualTo(PostResult.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+
+    String actualNarrative = worklogCaptor.getValue().getNarrative();
+
+    assertThat(actualNarrative)
+        .contains(timeGroup.getDescription());
+
+    assertThat(actualNarrative)
+        .contains(String.valueOf(timeGroup.getUser().getExperienceWeightingPercent()));
+
+    timeGroup.getTimeRows().forEach(timeRow -> {
+      assertThat(actualNarrative)
+          .contains(timeRow.getDescription());
+      assertThat(actualNarrative)
+          .contains(timeRow.getActivity());
+    });
   }
 
   @Test
@@ -334,7 +352,7 @@ public class PatrawinConnectorPostTimeTest {
         .timeRows(ImmutableList.of(
             fakeGenerator.randomTimeRow().modifier("1").activityHour(2018110115),
             fakeGenerator.randomTimeRow().modifier("1").activityHour(2018110114)))
-        .tags(Collections.singletonList(fakeGenerator.randomTag()));
+        .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
@@ -353,7 +371,7 @@ public class PatrawinConnectorPostTimeTest {
   @Test
   void postTime_worklog_has_valid_duration() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
-        .tags(Collections.singletonList(fakeGenerator.randomTag()));
+        .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
@@ -373,7 +391,7 @@ public class PatrawinConnectorPostTimeTest {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .totalDurationSecs(1000)
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
-        .tags(Collections.singletonList(fakeGenerator.randomTag())); // getPerTagDuration ?? strategy
+        .tags(ImmutableList.of(fakeGenerator.randomTag())); // getPerTagDuration ?? strategy
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);

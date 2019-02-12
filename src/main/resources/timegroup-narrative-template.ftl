@@ -3,13 +3,13 @@
 <#if getNarrativeType() == "NARRATIVE_AND_TIME_ROW_ACTIVITY_DESCRIPTIONS">
  <#list getTimeRows() as timeRow>
   <#assign groupTotalDuration += timeRow.getDurationSecs()>
-  ${timeRow.getActivityHour()}:${timeRow.getFirstObservedInHour()} [${timeRow.getDurationSecs() / 60} mins] -
-  ${timeRow.getActivity()} - ${timeRow.getDescription()!"N/A"}
+  ${(timeRow.getActivityHour() % 100)?string["00"]}:${timeRow.getFirstObservedInHour()?string["00"]} [${timeRow.getDurationSecs()
+ ?string.@duration}] - ${timeRow.getActivity()} - ${timeRow.getDescription()!"N/A"}
  </#list>
 </#if>
-<#if getDescription()?has_content || getNarrativeType() == "NARRATIVE_AND_TIME_ROW_ACTIVITY_DESCRIPTIONS">
- ${'\n'}
+${'\n'}
+<#if getNarrativeType() == "NARRATIVE_AND_TIME_ROW_ACTIVITY_DESCRIPTIONS">
 Total worked time: ${groupTotalDuration?string.@duration}
+</#if>
 Total chargeable time: ${getTotalDurationSecs()?string.@duration}
 Experience factor: ${getUser().getExperienceWeightingPercent()}%
-</#if>
