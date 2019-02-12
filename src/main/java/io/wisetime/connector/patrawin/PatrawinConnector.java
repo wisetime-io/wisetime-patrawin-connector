@@ -223,17 +223,12 @@ public class PatrawinConnector implements WiseTimeConnector {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid modifier " + modifier);
     }
 
-    final Function<Tag, Optional<String>> findCaseOrClientId = tag -> {
-      String id = tag.getName();
-      if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
-        return Optional.of(id);
-      }
-      log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
-      return Optional.empty();
-    };
-
     final String narrative = narrativeFormatter.format(timeGroup);
     final Instant activityStartTimeInstant = timeDbFormatter.convert(activityStartTime.get());
+    final int workedTimeSeconds = Math.round(DurationCalculator.of(timeGroup)
+        .disregardExperienceRating()
+        .calculate()
+        .getPerTagDuration());
     final int chargeableTimeSeconds = Math.round(DurationCalculator.of(timeGroup)
         .useExperienceRating()
         .calculate()
@@ -247,7 +242,7 @@ public class PatrawinConnector implements WiseTimeConnector {
           .activityCode(activityCode)
           .narrative(narrative)
           .startTime(activityStartTimeInstant)
-          .durationSeconds(timeGroup.getTotalDurationSecs()) // could be modified by the user
+          .durationSeconds(workedTimeSeconds) // could be modified by the user
           .chargeableTimeSeconds(chargeableTimeSeconds) // based on time that could be modified by the user
           .build();
 
@@ -275,6 +270,15 @@ public class PatrawinConnector implements WiseTimeConnector {
     }
     return PostResult.SUCCESS;
   }
+
+  private final Function<Tag, Optional<String>> findCaseOrClientId = tag -> {
+    String id = tag.getName();
+    if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
+      return Optional.of(id);
+    }
+    log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
+    return Optional.empty();
+  };
 
   @VisibleForTesting
   Set<String> getTimeGroupModifiers(final TimeGroup timeGroup) {

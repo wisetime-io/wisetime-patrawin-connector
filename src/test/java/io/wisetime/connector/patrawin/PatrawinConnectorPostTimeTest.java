@@ -371,16 +371,22 @@ public class PatrawinConnectorPostTimeTest {
   @Test
   void postTime_worklog_has_valid_duration() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
-        .tags(ImmutableList.of(fakeGenerator.randomTag()));
+        .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
+        .totalDurationSecs(20 * 60)
+        .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
+        .tags(ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
-    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+    verify(patrawinDao, times(2)).createWorklog(worklogCaptor.capture());
 
-    assertThat(worklogCaptor.getValue().getDurationSeconds())
-        .isEqualTo(timeGroup.getTotalDurationSecs());
+    List<Worklog> allValues = worklogCaptor.getAllValues();
+    assertThat(allValues.get(0).getDurationSeconds())
+        .isEqualTo(20 * 60 / 2);
+    assertThat(allValues.get(1).getDurationSeconds())
+        .isEqualTo(20 * 60 / 2);
   }
 
   /**
