@@ -13,7 +13,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 
@@ -54,7 +55,6 @@ public class PatrawinConnectorPostTimeTest {
 
   private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
   private static ApiClient apiClient = mock(ApiClient.class);
-  // private static TemplateFormatter narrativeFormatter = mock(TemplateFormatter.class);
 
   private static PatrawinConnector connector;
   private static FakeTimeGroupGenerator fakeGenerator = new FakeTimeGroupGenerator();
@@ -77,7 +77,6 @@ public class PatrawinConnectorPostTimeTest {
   void setUpTest() {
     RuntimeConfig.clearProperty(ConnectorConfigKey.CALLER_KEY);
 
-    // reset(narrativeFormatter);
     reset(patrawinDao);
 
     when(patrawinDao.doesUserExist(anyString()))
@@ -360,7 +359,8 @@ public class PatrawinConnectorPostTimeTest {
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
 
-    final Instant expectedActivityStartTime = Instant.ofEpochSecond(1541080800);
+    // TODO: replace hardcoded 0 offset hours
+    final OffsetDateTime expectedActivityStartTime = OffsetDateTime.of(2018, 11, 1, 14, 0, 0, 0, ZoneOffset.ofHours(0));
     assertThat(worklogCaptor.getValue().getStartTime())
         .isEqualTo(expectedActivityStartTime);
   }
@@ -372,6 +372,9 @@ public class PatrawinConnectorPostTimeTest {
   void postTime_worklog_has_valid_duration() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
+        .timeRows(ImmutableList.of(
+            fakeGenerator.randomTimeRow().modifier("1").durationSecs(60),
+            fakeGenerator.randomTimeRow().modifier("1").durationSecs(8 * 60)))
         .totalDurationSecs(20 * 60)
         .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
         .tags(ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag()));
@@ -384,9 +387,9 @@ public class PatrawinConnectorPostTimeTest {
 
     List<Worklog> allValues = worklogCaptor.getAllValues();
     assertThat(allValues.get(0).getDurationSeconds())
-        .isEqualTo(20 * 60 / 2);
+        .isEqualTo(540 / 2);
     assertThat(allValues.get(1).getDurationSeconds())
-        .isEqualTo(20 * 60 / 2);
+        .isEqualTo(540 / 2);
   }
 
   /**

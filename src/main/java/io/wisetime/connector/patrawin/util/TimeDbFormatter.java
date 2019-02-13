@@ -4,17 +4,15 @@
 
 package io.wisetime.connector.patrawin.util;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAccessor;
 
 /**
  * @author galya.bogdanova@m.practiceinsight.io
  */
 public interface TimeDbFormatter {
 
-  String format(Instant instant);
+  String format(TemporalAccessor dateTime);
 
-  Instant parse(String dateTime);
-
-  Instant convert(LocalDateTime localDateTime);
+  LocalDateTime parse(String msqlDateTime);
 }

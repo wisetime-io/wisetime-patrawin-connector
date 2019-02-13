@@ -17,7 +17,7 @@ import org.codejargon.fluentjdbc.api.query.SelectQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +72,8 @@ public class PatrawinDao {
    * @param maxResults          maximum number of cases to return
    * @return list of cases ordered by creation time ascending
    */
-  public List<Case> findCasesOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedCaseNumbers,
+  public List<Case> findCasesOrderedByCreationTime(final LocalDateTime createdOnOrAfter,
+                                                   final List<String> excludedCaseNumbers,
                                                    final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT Arendenr AS CaseNum, Slagord AS Description, Skapatdat AS CreatedDate FROM "
@@ -107,7 +108,8 @@ public class PatrawinDao {
    * @param maxResults        maximum number of clients to return
    * @return list of clients ordered by creation time ascending
    */
-  public List<Client> findClientsOrderedByCreationTime(final Instant createdOnOrAfter, final List<String> excludedClientIds,
+  public List<Client> findClientsOrderedByCreationTime(final LocalDateTime createdOnOrAfter,
+                                                       final List<String> excludedClientIds,
                                                        final int maxResults) {
     final StringBuilder query = new StringBuilder(
         "SELECT Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate FROM "

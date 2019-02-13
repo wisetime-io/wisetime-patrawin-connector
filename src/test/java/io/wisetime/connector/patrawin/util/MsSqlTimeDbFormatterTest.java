@@ -6,7 +6,7 @@ package io.wisetime.connector.patrawin.util;
 
 import org.junit.jupiter.api.Test;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeParseException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,8 +21,8 @@ public class MsSqlTimeDbFormatterTest {
 
   @Test
   void format_correct_instant() {
-    Instant correctInstant = Instant.ofEpochSecond(1549373172); // GMT: Tuesday, February 5, 2019 1:26:12 PM
-    String msSqlFormat = msSqlDateTimeUtils.format(correctInstant);
+    LocalDateTime correctDateTime = LocalDateTime.of(2019, 2, 5, 13, 26, 12);
+    String msSqlFormat = msSqlDateTimeUtils.format(correctDateTime);
     assertThat(msSqlFormat)
         .isEqualTo("2019-02-05 13:26:12");
   }
@@ -34,9 +34,9 @@ public class MsSqlTimeDbFormatterTest {
 
   @Test
   void parse_correct_string() {
-    Instant instant = msSqlDateTimeUtils.parse("2019-02-05 13:26:12");
-    assertThat(instant)
-        .isEqualTo(Instant.ofEpochSecond(1549373172));
+    LocalDateTime localDateTime = msSqlDateTimeUtils.parse("2019-02-05 13:26:12");
+    assertThat(localDateTime)
+        .isEqualTo(LocalDateTime.of(2019, 2, 5, 13, 26, 12));
   }
 
   @Test

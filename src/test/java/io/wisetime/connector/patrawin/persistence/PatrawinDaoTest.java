@@ -23,7 +23,8 @@ import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.JdbcDatabaseContainer;
 import org.testcontainers.containers.MSSQLServerContainer;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -158,7 +159,7 @@ class PatrawinDaoTest {
         .usernameOrEmail(user.getExternalId())
         .activityCode(activityCode)
         .narrative("")
-        .startTime(Instant.now().minus(10, ChronoUnit.HOURS))
+        .startTime(OffsetDateTime.now().minus(10, ChronoUnit.HOURS))
         .durationSeconds(2 * 60 * 60)
         .chargeableTimeSeconds(2 * 60 * 60)
         .build();
@@ -170,7 +171,7 @@ class PatrawinDaoTest {
   void findCasesOrderedByCreationTime() {
     cleanCasesTable();
 
-    final Instant now = Instant.now();
+    final LocalDateTime now = LocalDateTime.now();
     final Case createdNow1 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withId("B1234"));
     final Case createdNow2 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withId("A1234"));
     final Case createdYesterday = createCase(fakeCaseClientGenerator.randomCase(now.minus(1, ChronoUnit.DAYS)));
@@ -203,7 +204,7 @@ class PatrawinDaoTest {
   void findClientsOrderedByCreationTime() {
     cleanClientsTable();
 
-    final Instant now = Instant.now();
+    final LocalDateTime now = LocalDateTime.now();
     final Client createdNow1 = createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now))
         .withId("123"));
     final Client createdNow2 = createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now))

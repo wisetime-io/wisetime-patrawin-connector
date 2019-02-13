@@ -14,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -140,7 +140,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
     Case case1 = fakeGenerator.randomCase();
     Case case2 = fakeGenerator.randomCase();
 
-    Instant lastSyncedCaseCreationTime = Instant.EPOCH;
+    LocalDateTime lastSyncedCaseCreationTime = LocalDateTime.MIN;
     doReturn(lastSyncedCaseCreationTime)
         .when(syncStore)
         .getLastSyncedCaseCreationTime();
@@ -150,7 +150,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
         .when(syncStore)
         .getLastSyncedCaseNumbers();
 
-    ArgumentCaptor<Instant> lastSyncedCaseCreationTimeCaptor = ArgumentCaptor.forClass(Instant.class);
+    ArgumentCaptor<LocalDateTime> lastSyncedCaseCreationTimeCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
     ArgumentCaptor<List> lastSyncedCaseNumbersCaptor = ArgumentCaptor.forClass(List.class);
     when(patrawinDao.findCasesOrderedByCreationTime(lastSyncedCaseCreationTimeCaptor.capture(),
         lastSyncedCaseNumbersCaptor.capture(), anyInt()))
@@ -221,7 +221,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
     Client client1 = fakeGenerator.randomClient();
     Client client2 = fakeGenerator.randomClient();
 
-    Instant lastSyncedClientCreationTime = Instant.EPOCH;
+    LocalDateTime lastSyncedClientCreationTime = LocalDateTime.MIN;
     doReturn(lastSyncedClientCreationTime)
         .when(syncStore)
         .getLastSyncedClientCreationTime();
@@ -231,7 +231,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
         .when(syncStore)
         .getLastSyncedClientIds();
 
-    ArgumentCaptor<Instant> lastSyncedClientsCreationTimeCaptor = ArgumentCaptor.forClass(Instant.class);
+    ArgumentCaptor<LocalDateTime> lastSyncedClientsCreationTimeCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
     ArgumentCaptor<List> lastSyncedClientsNumbersCaptor = ArgumentCaptor.forClass(List.class);
     when(patrawinDao.findClientsOrderedByCreationTime(lastSyncedClientsCreationTimeCaptor.capture(),
         lastSyncedClientsNumbersCaptor.capture(), anyInt()))

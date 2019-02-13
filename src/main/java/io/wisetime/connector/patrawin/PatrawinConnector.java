@@ -13,8 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -38,6 +39,7 @@ import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.connector.template.TemplateFormatter;
 import io.wisetime.connector.template.TemplateFormatterConfig;
 import io.wisetime.connector.utils.DurationCalculator;
+import io.wisetime.connector.utils.DurationSource;
 import io.wisetime.generated.connect.Tag;
 import io.wisetime.generated.connect.TimeGroup;
 import io.wisetime.generated.connect.TimeRow;
@@ -100,7 +102,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncCases() {
-    final Instant lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
+    final LocalDateTime lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
     final List<String> lastPreviouslySyncedCaseNumbers = syncStore.getLastSyncedCaseNumbers();
     final List<Case> cases = patrawinDao.findCasesOrderedByCreationTime(
         lastPreviouslySyncedCaseCreationTime,
@@ -138,7 +140,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncClients() {
-    final Instant lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
+    final LocalDateTime lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
     final List<String> lastPreviouslySyncedClientIds = syncStore.getLastSyncedClientIds();
     final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
         lastPreviouslySyncedClientCreationTime,
@@ -224,15 +226,17 @@ public class PatrawinConnector implements WiseTimeConnector {
     }
 
     final String narrative = narrativeFormatter.format(timeGroup);
-    final Instant activityStartTimeInstant = timeDbFormatter.convert(activityStartTime.get());
     final int workedTimeSeconds = Math.round(DurationCalculator.of(timeGroup)
         .disregardExperienceRating()
+        .useDurationFrom(DurationSource.SUM_TIME_ROWS)
         .calculate()
         .getPerTagDuration());
     final int chargeableTimeSeconds = Math.round(DurationCalculator.of(timeGroup)
         .useExperienceRating()
         .calculate()
         .getPerTagDuration());
+    // TODO: fix offset
+    final OffsetDateTime activityStartTimeOffset = activityStartTime.get().atOffset(ZoneOffset.ofHours(0));
 
     final Function<String, String> createWorklog = caseOrClientId -> {
       final ImmutableWorklog worklog = ImmutableWorklog
@@ -241,9 +245,9 @@ public class PatrawinConnector implements WiseTimeConnector {
           .usernameOrEmail(authorUsernameOrEmail)
           .activityCode(activityCode)
           .narrative(narrative)
-          .startTime(activityStartTimeInstant)
-          .durationSeconds(workedTimeSeconds) // could be modified by the user
-          .chargeableTimeSeconds(chargeableTimeSeconds) // based on time that could be modified by the user
+          .startTime(activityStartTimeOffset)
+          .durationSeconds(workedTimeSeconds)
+          .chargeableTimeSeconds(chargeableTimeSeconds)
           .build();
 
       patrawinDao.createWorklog(worklog);

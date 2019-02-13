@@ -6,16 +6,16 @@ package io.wisetime.connector.patrawin.fake;
 
 import com.github.javafaker.Faker;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import io.wisetime.connector.patrawin.model.ImmutableCase;
-import io.wisetime.connector.patrawin.model.ImmutableClient;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
+import io.wisetime.connector.patrawin.model.ImmutableCase;
+import io.wisetime.connector.patrawin.model.ImmutableClient;
 
 /**
  * @author shane.xie@practiceinsigt.io
@@ -25,10 +25,10 @@ public class FakeCaseClientGenerator {
   private static final Faker FAKER = new Faker();
 
   public Case randomCase() {
-    return randomCase(Instant.now());
+    return randomCase(LocalDateTime.now());
   }
 
-  public Case randomCase(Instant createdTime) {
+  public Case randomCase(LocalDateTime createdTime) {
     return ImmutableCase.builder()
         .id(FAKER.bothify("??####", true))
         .description(FAKER.lorem().characters(12, 30))
@@ -41,10 +41,10 @@ public class FakeCaseClientGenerator {
   }
 
   public Client randomClient() {
-    return randomClient(Instant.now());
+    return randomClient(LocalDateTime.now());
   }
 
-  public Client randomClient(Instant createdTime) {
+  public Client randomClient(LocalDateTime createdTime) {
     return ImmutableClient.builder()
         .id(FAKER.bothify("??###", true))
         .alias(FAKER.company().name())

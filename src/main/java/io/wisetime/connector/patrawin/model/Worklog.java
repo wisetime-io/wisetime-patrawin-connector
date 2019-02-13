@@ -6,7 +6,7 @@ package io.wisetime.connector.patrawin.model;
 
 import org.immutables.value.Value;
 
-import java.time.Instant;
+import java.time.OffsetDateTime;
 
 /**
  * @author galya.bogdanova@m.practiceinsight.io
@@ -33,7 +33,7 @@ public interface Worklog {
    */
   String getNarrative();
 
-  Instant getStartTime();
+  OffsetDateTime getStartTime();
 
   int getDurationSeconds();
 
