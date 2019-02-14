@@ -5,14 +5,16 @@
 package io.wisetime.connector.patrawin.util;
 
 import java.time.LocalDateTime;
-import java.time.temporal.TemporalAccessor;
+import java.time.OffsetDateTime;
 
 /**
  * @author galya.bogdanova@m.practiceinsight.io
  */
 public interface TimeDbFormatter {
 
-  String format(TemporalAccessor dateTime);
+  String format(LocalDateTime dateTime);
 
-  LocalDateTime parse(String msqlDateTime);
+  String format(OffsetDateTime offsetDateTime);
+
+  LocalDateTime parseDateTime(String msqlDateTime);
 }

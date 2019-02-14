@@ -53,6 +53,8 @@ import static org.mockito.Mockito.when;
  */
 public class PatrawinConnectorPostTimeTest {
 
+  private static final String DEFAULT_MODIFIER = "123456";
+
   private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
   private static ApiClient apiClient = mock(ApiClient.class);
 
@@ -66,6 +68,8 @@ public class PatrawinConnectorPostTimeTest {
       binder.bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
     });
     connector = injector.getInstance(PatrawinConnector.class);
+
+    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, DEFAULT_MODIFIER);
 
     // Ensure PatrawinConnector#init will not fail
     doReturn(true).when(patrawinDao).hasExpectedSchema();
@@ -171,23 +175,7 @@ public class PatrawinConnectorPostTimeTest {
   }
 
   @Test
-  void postTime_no_timerow_modifiers_no_default_should_fail() {
-    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, null);
-
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeGenerator.randomTimeRow().modifier(null),
-        fakeGenerator.randomTimeRow().modifier(null)));
-
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
-
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
-  }
-
-  @Test
   void postTime_default_modifier_used_when_no_timegroup_modifier() {
-    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, "5");
-
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
         fakeGenerator.randomTimeRow().modifier(null)));
 
@@ -198,7 +186,7 @@ public class PatrawinConnectorPostTimeTest {
     connector.postTime(mock(Request.class), timeGroup);
 
     assertThat(modifierCaptor.getValue())
-        .isEqualTo(5);
+        .isEqualTo(123456);
   }
 
   @Test
@@ -342,6 +330,9 @@ public class PatrawinConnectorPostTimeTest {
           .contains(timeRow.getDescription());
       assertThat(actualNarrative)
           .contains(timeRow.getActivity());
+      assertThat(actualNarrative)
+          .doesNotContain("The above times have been split across 1 cases / clients and are thus greater than the " +
+              "chargeable time on this case.");
     });
   }
 

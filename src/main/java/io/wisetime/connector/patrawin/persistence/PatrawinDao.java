@@ -95,7 +95,7 @@ public class PatrawinDao {
     return selectQuery.listResult(rs -> ImmutableCase.builder()
         .id(rs.getString(1))
         .description(rs.getString(2))
-        .creationTime(timeDbFormatter.parse(rs.getString(3)))
+        .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
     );
   }
@@ -131,7 +131,7 @@ public class PatrawinDao {
     return selectQuery.listResult(rs -> ImmutableClient.builder()
         .id(rs.getString(1))
         .alias(rs.getString(2))
-        .creationTime(timeDbFormatter.parse(rs.getString(3)))
+        .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
     );
   }

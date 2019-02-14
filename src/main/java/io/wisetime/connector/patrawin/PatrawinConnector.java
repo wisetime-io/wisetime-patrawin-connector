@@ -60,6 +60,7 @@ public class PatrawinConnector implements WiseTimeConnector {
   private ApiClient apiClient;
   private SyncStore syncStore;
   private TemplateFormatter narrativeFormatter;
+  private String defaultModifier;
 
   @Inject
   private PatrawinDao patrawinDao;
@@ -70,6 +71,8 @@ public class PatrawinConnector implements WiseTimeConnector {
   public void init(ConnectorModule connectorModule) {
     Preconditions.checkArgument(patrawinDao.hasExpectedSchema(),
         "Patrawin database schema is unsupported by this connector");
+    this.defaultModifier = RuntimeConfig.getString(PatrawinConnectorConfigKey.DEFAULT_MODIFIER)
+        .orElseThrow(() -> new IllegalStateException("Required configuration param DEFAULT_MODIFIER is not set."));
 
     this.apiClient = connectorModule.getApiClient();
     this.syncStore = createSyncStore(connectorModule.getConnectorStore());
@@ -207,12 +210,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     }
 
     final String timeGroupModifier = timeGroupModifiers.iterator().next();
-    final Optional<String> defaultModifier = RuntimeConfig.getString(PatrawinConnectorConfigKey.DEFAULT_MODIFIER);
-    if (StringUtils.isEmpty(timeGroupModifier) && !defaultModifier.isPresent()) {
-      return PostResult.PERMANENT_FAILURE.withMessage("No modifier found for the time group.");
-    }
-
-    final String modifier = StringUtils.isEmpty(timeGroupModifier) ? defaultModifier.get() : timeGroupModifier;
+    final String modifier = StringUtils.isEmpty(timeGroupModifier) ? defaultModifier : timeGroupModifier;
 
     int activityCode;
     try {

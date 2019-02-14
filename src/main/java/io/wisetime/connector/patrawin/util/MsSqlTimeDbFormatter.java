@@ -5,10 +5,10 @@
 package io.wisetime.connector.patrawin.util;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.temporal.ChronoField;
-import java.time.temporal.TemporalAccessor;
 
 /**
  * @author galya.bogdanova@m.practiceinsight.io
@@ -24,13 +24,23 @@ public final class MsSqlTimeDbFormatter implements TimeDbFormatter {
       .appendFraction(ChronoField.MICRO_OF_SECOND, 0, ROUNDING_FACTOR_MICRO_SECONDS, true)
       .toFormatter();
 
+  private static final DateTimeFormatter MSSQL_DATE_TIME_OFFSET_FORMATTER = new DateTimeFormatterBuilder()
+      .appendPattern("yyyy-MM-dd HH:mm:ss [XXX]")
+      .appendFraction(ChronoField.MICRO_OF_SECOND, 0, ROUNDING_FACTOR_MICRO_SECONDS, true)
+      .toFormatter();
+
   @Override
-  public String format(TemporalAccessor dateTime) {
+  public String format(LocalDateTime dateTime) {
     return MSSQL_DATE_TIME_FORMATTER.format(dateTime);
   }
 
   @Override
-  public LocalDateTime parse(String msqlDateTime) {
+  public String format(OffsetDateTime offsetDateTime) {
+    return MSSQL_DATE_TIME_OFFSET_FORMATTER.format(offsetDateTime);
+  }
+
+  @Override
+  public LocalDateTime parseDateTime(String msqlDateTime) {
     return LocalDateTime.parse(msqlDateTime, MSSQL_DATE_TIME_FORMATTER);
   }
 

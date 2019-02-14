@@ -10,10 +10,9 @@ ${'\n'}
 Total worked time: ${getTotalDuration(getTimeRows())?string.@duration}
 Total chargeable time: ${getTotalDurationSecs()?string.@duration}
 Experience factor: ${getUser().getExperienceWeightingPercent()}%
-<#if getDurationSplitStrategy() == "DIVIDE_BETWEEN_TAGS">
+<#if (getTags()?size > 1) && (getDurationSplitStrategy() == "DIVIDE_BETWEEN_TAGS")>
 ${'\n'}
-The above times have been split across ${getTimeRows()?size} cases and are thus greater than the chargeable time on this
- case.
+The above times have been split across ${getTags()?size} items and are thus greater than the chargeable time on this item.
 </#if>
 
 <#function getTotalDuration timeRows>

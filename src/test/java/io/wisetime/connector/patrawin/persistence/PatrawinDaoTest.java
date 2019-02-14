@@ -288,7 +288,7 @@ class PatrawinDaoTest {
         .singleResult(rs -> ImmutableCase.builder()
             .id(rs.getString(1))
             .description(rs.getString(2))
-            .creationTime(timeDbFormatter.parse(rs.getString(3)))
+            .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
             .build());
   }
 
@@ -319,7 +319,7 @@ class PatrawinDaoTest {
         .singleResult(rs -> ImmutableClient.builder()
             .id(rs.getString(1))
             .alias(rs.getString(2))
-            .creationTime(timeDbFormatter.parse(rs.getString(3)))
+            .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
             .build());
   }
 
