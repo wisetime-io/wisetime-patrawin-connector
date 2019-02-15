@@ -19,7 +19,7 @@ import io.wisetime.generated.connect.UpsertTagRequest;
  */
 @Value.Immutable
 public interface Client {
-  String getClientId();
+  String clientNumber();
 
   String getAlias();
 
@@ -27,9 +27,9 @@ public interface Client {
 
   default UpsertTagRequest toUpsertTagRequest(final String path) {
     return new UpsertTagRequest()
-        .name(getClientId())
+        .name(clientNumber())
         .description(getAlias())
         .path(path)
-        .additionalKeywords(ImmutableList.of(getClientId()));
+        .additionalKeywords(ImmutableList.of(clientNumber()));
   }
 }

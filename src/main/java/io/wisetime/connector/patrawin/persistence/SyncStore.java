@@ -26,7 +26,7 @@ public class SyncStore {
   private static final String LAST_SYNCED_CASE_CREATION_TIME_KEY = "printLast-synced-case-creation-time";
   private static final String LAST_SYNCED_CASE_NUMBERS_KEY = "printLast-synced-case-numbers-csv";
   private static final String LAST_SYNCED_CLIENT_CREATION_TIME_KEY = "printLast-synced-client-creation-time";
-  private static final String LAST_SYNCED_CLIENT_IDS_KEY = "printLast-synced-client-ids-csv";
+  private static final String LAST_SYNCED_CLIENT_NUMBERS_KEY = "printLast-synced-client-numbers-csv";
   private static final String DELIMITER = "@@";
 
   private ConnectorStore connectorStore;
@@ -68,8 +68,8 @@ public class SyncStore {
   /**
    * @return comma separated client ids of the printLast batch of clients that were synced
    */
-  public List<String> getLastSyncedClientIds() {
-    return connectorStore.getString(LAST_SYNCED_CLIENT_IDS_KEY)
+  public List<String> getLastSyncedClientNumbers() {
+    return connectorStore.getString(LAST_SYNCED_CLIENT_NUMBERS_KEY)
         .map(i -> i.split(DELIMITER))
         .map(Arrays::asList)
         .orElse(ImmutableList.of());
@@ -99,9 +99,9 @@ public class SyncStore {
   public void setLastSyncedClients(final List<Client> lastSyncedClients) {
     LocalDateTime lastClientCreationTime = lastSyncedClients.get(lastSyncedClients.size() - 1).getCreationTime();
     connectorStore.putString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY, lastClientCreationTime.toString());
-    connectorStore.putString(LAST_SYNCED_CLIENT_IDS_KEY, lastSyncedClients.stream()
+    connectorStore.putString(LAST_SYNCED_CLIENT_NUMBERS_KEY, lastSyncedClients.stream()
         .filter(lastSyncedClient -> lastSyncedClient.getCreationTime().equals(lastClientCreationTime))
-        .map(Client::getClientId)
+        .map(Client::clientNumber)
         .collect(Collectors.joining(DELIMITER)));
   }
 }

@@ -229,7 +229,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
     List<String> lastSyncedClientNumbers = Collections.emptyList();
     doReturn(lastSyncedClientNumbers)
         .when(syncStore)
-        .getLastSyncedClientIds();
+        .getLastSyncedClientNumbers();
 
     ArgumentCaptor<LocalDateTime> lastSyncedClientsCreationTimeCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
     ArgumentCaptor<List> lastSyncedClientsNumbersCaptor = ArgumentCaptor.forClass(List.class);
@@ -251,14 +251,14 @@ public class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequests.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(client1.getClientId())
+                .name(client1.clientNumber())
                 .description(client1.getAlias())
-                .additionalKeywords(ImmutableList.of(client1.getClientId()))
+                .additionalKeywords(ImmutableList.of(client1.clientNumber()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(client2.getClientId())
+                .name(client2.clientNumber())
                 .description(client2.getAlias())
-                .additionalKeywords(ImmutableList.of(client2.getClientId()))
+                .additionalKeywords(ImmutableList.of(client2.clientNumber()))
                 .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Client>> storeClientsCaptor = ArgumentCaptor.forClass(List.class);

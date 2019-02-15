@@ -13,7 +13,7 @@ import java.time.OffsetDateTime;
  */
 @Value.Immutable
 public interface Worklog {
-  String getCaseOrClientId();
+  String getCaseOrClientNumber();
 
   String getUsernameOrEmail();
 

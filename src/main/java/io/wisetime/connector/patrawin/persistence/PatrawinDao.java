@@ -103,33 +103,33 @@ public class PatrawinDao {
   /**
    * Find clients
    *
-   * @param createdOnOrAfter  find clients created on or after this time
-   * @param excludedClientIds list of client IDs to exclude from results
-   * @param maxResults        maximum number of clients to return
+   * @param createdOnOrAfter      find clients created on or after this time
+   * @param excludedClientNumbers list of client IDs to exclude from results
+   * @param maxResults            maximum number of clients to return
    * @return list of clients ordered by creation time ascending
    */
   public List<Client> findClientsOrderedByCreationTime(final LocalDateTime createdOnOrAfter,
-                                                       final List<String> excludedClientIds,
+                                                       final List<String> excludedClientNumbers,
                                                        final int maxResults) {
     final StringBuilder query = new StringBuilder(
-        "SELECT Kundnr AS ClientId, Kortnamnkund AS Alias, Skapatdat AS CreatedDate FROM "
+        "SELECT Kundnr AS ClientNumber, Kortnamnkund AS Alias, Skapatdat AS CreatedDate FROM "
     );
     query.append(TABLE_NAME_CLIENT);
     query.append(" WHERE Skapatdat >= :createdOnOrAfter");
-    if (!excludedClientIds.isEmpty()) {
-      query.append(" AND Kundnr NOT IN (:excludedClientIds)");
+    if (!excludedClientNumbers.isEmpty()) {
+      query.append(" AND Kundnr NOT IN (:excludedClientNumbers)");
     }
-    query.append(" ORDER BY CreatedDate, ClientId");
+    query.append(" ORDER BY CreatedDate, ClientNumber");
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
         .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter))
         .maxRows((long) maxResults);
-    if (!excludedClientIds.isEmpty()) {
-      selectQuery.namedParam("excludedClientIds", excludedClientIds);
+    if (!excludedClientNumbers.isEmpty()) {
+      selectQuery.namedParam("excludedClientNumbers", excludedClientNumbers);
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
-        .clientId(rs.getString(1))
+        .clientNumber(rs.getString(1))
         .alias(rs.getString(2))
         .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
@@ -154,10 +154,10 @@ public class PatrawinDao {
         .isPresent();
   }
 
-  public boolean doesClientExist(String clientId) {
-    return query().select("SELECT Kundnr AS ClientId FROM " + TABLE_NAME_CLIENT +
-        " WHERE Kundnr = :clientId")
-        .namedParam("clientId", clientId)
+  public boolean doesClientExist(String clientNumber) {
+    return query().select("SELECT Kundnr AS ClientNumber FROM " + TABLE_NAME_CLIENT +
+        " WHERE Kundnr = :clientNumber")
+        .namedParam("clientNumber", clientNumber)
         .maxRows(1L)
         .firstResult(rs -> rs)
         .isPresent();
@@ -197,7 +197,7 @@ public class PatrawinDao {
         "@start_time            = :start_time, " +
         "@total_time_secs       = :total_time_secs" +
         "@chargeable_time_secs  = :chargeable_time_secs")
-        .namedParam("case_or_client_id", worklog.getCaseOrClientId())
+        .namedParam("case_or_client_id", worklog.getCaseOrClientNumber())
         .namedParam("username_or_email", worklog.getUsernameOrEmail())
         .namedParam("activity_code", worklog.getActivityCode())
         .namedParam("narrative", worklog.getNarrative())

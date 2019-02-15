@@ -144,21 +144,21 @@ public class PatrawinConnector implements WiseTimeConnector {
   @VisibleForTesting
   boolean syncClients() {
     final LocalDateTime lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
-    final List<String> lastPreviouslySyncedClientIds = syncStore.getLastSyncedClientIds();
+    final List<String> lastPreviouslySyncedClientNumbers = syncStore.getLastSyncedClientNumbers();
     final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
         lastPreviouslySyncedClientCreationTime,
-        lastPreviouslySyncedClientIds,
+        lastPreviouslySyncedClientNumbers,
         tagUpsertBatchSize());
 
     if (clients.isEmpty()) {
-      log.info("No new client tags found. Last client ID previously synced: {}", printLast(lastPreviouslySyncedClientIds));
+      log.info("No new client tags found. Last client ID previously synced: {}", printLast(lastPreviouslySyncedClientNumbers));
       return false;
     } else {
       try {
         log.info("Detected {} new {}: {}",
             clients.size(),
             clients.size() > 1 ? "clients" : "client",
-            clients.stream().map(Client::getClientId).collect(Collectors.joining(", ")));
+            clients.stream().map(Client::clientNumber).collect(Collectors.joining(", ")));
 
         final List<UpsertTagRequest> upsertRequests = clients
             .stream()
@@ -236,10 +236,10 @@ public class PatrawinConnector implements WiseTimeConnector {
     // TODO: fix offset
     final OffsetDateTime activityStartTimeOffset = activityStartTime.get().atOffset(ZoneOffset.ofHours(0));
 
-    final Function<String, String> createWorklog = caseOrClientId -> {
+    final Function<String, String> createWorklog = caseOrClientNumber -> {
       final ImmutableWorklog worklog = ImmutableWorklog
           .builder()
-          .caseOrClientId(caseOrClientId)
+          .caseOrClientNumber(caseOrClientNumber)
           .usernameOrEmail(authorUsernameOrEmail)
           .activityCode(activityCode)
           .narrative(narrative)
@@ -249,19 +249,19 @@ public class PatrawinConnector implements WiseTimeConnector {
           .build();
 
       patrawinDao.createWorklog(worklog);
-      return caseOrClientId;
+      return caseOrClientNumber;
     };
 
     try {
       patrawinDao.asTransaction(() ->
           timeGroup.getTags()
               .stream()
-              .map(findCaseOrClientId)
+              .map(findCaseOrClientNumber)
               .filter(Optional::isPresent)
               .map(Optional::get)
               .map(createWorklog)
-              .forEach(caseOrClientId ->
-                  log.info("Posted time to Patrawin case / client {} on behalf of {}", caseOrClientId, authorUsernameOrEmail)
+              .forEach(caseOrClientNumber ->
+                  log.info("Posted time to Patrawin case / client {} on behalf of {}", caseOrClientNumber, authorUsernameOrEmail)
               )
       );
     } catch (RuntimeException e) {
@@ -273,7 +273,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     return PostResult.SUCCESS;
   }
 
-  private final Function<Tag, Optional<String>> findCaseOrClientId = tag -> {
+  private final Function<Tag, Optional<String>> findCaseOrClientNumber = tag -> {
     final String id = tag.getName();
     if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
       return Optional.of(id);

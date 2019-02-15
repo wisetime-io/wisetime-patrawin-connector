@@ -46,7 +46,7 @@ public class FakeCaseClientGenerator {
 
   public Client randomClient(LocalDateTime createdTime) {
     return ImmutableClient.builder()
-        .clientId(FAKER.bothify("??###", true))
+        .clientNumber(FAKER.bothify("??###", true))
         .alias(FAKER.company().name())
         .creationTime(createdTime)
         .build();

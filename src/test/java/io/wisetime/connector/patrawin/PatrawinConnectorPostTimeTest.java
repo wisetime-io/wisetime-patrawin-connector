@@ -282,9 +282,9 @@ public class PatrawinConnectorPostTimeTest {
 
     assertThat(createdWorklogs)
         .hasSize(2);
-    assertThat(createdWorklogs.get(0).getCaseOrClientId())
+    assertThat(createdWorklogs.get(0).getCaseOrClientNumber())
         .isEqualTo(existentCaseTag.getName());
-    assertThat(createdWorklogs.get(1).getCaseOrClientId())
+    assertThat(createdWorklogs.get(1).getCaseOrClientNumber())
         .isEqualTo(existentClientTag.getName());
   }
 

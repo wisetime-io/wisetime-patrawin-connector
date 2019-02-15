@@ -127,7 +127,7 @@ class PatrawinDaoTest {
     final Client client = fakeCaseClientGenerator.randomClient();
     assertThat(createClient(client))
         .isNotNull();
-    assertThat(patrawinDao.doesClientExist(client.getClientId()))
+    assertThat(patrawinDao.doesClientExist(client.clientNumber()))
         .isTrue();
   }
 
@@ -155,7 +155,7 @@ class PatrawinDaoTest {
         .isTrue();
 
     final Worklog worklog = ImmutableWorklog.builder()
-        .caseOrClientId(aCase.getCaseNumber())
+        .caseOrClientNumber(aCase.getCaseNumber())
         .usernameOrEmail(user.getExternalId())
         .activityCode(activityCode)
         .narrative("")
@@ -206,9 +206,9 @@ class PatrawinDaoTest {
 
     final LocalDateTime now = LocalDateTime.now();
     final Client createdNow1 = createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now))
-        .withClientId("123"));
+        .withClientNumber("123"));
     final Client createdNow2 = createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now))
-        .withClientId("122"));
+        .withClientNumber("122"));
     final Client createdYesterday = createClient(fakeCaseClientGenerator.randomClient(now.minus(1, ChronoUnit.DAYS)));
     final Client createdLastWeek = createClient(fakeCaseClientGenerator.randomClient(now.minus(7, ChronoUnit.DAYS)));
     final Client createdLast2Weeks = createClient(fakeCaseClientGenerator.randomClient(now.minus(14, ChronoUnit.DAYS)));
@@ -227,7 +227,7 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Client> nextClients = patrawinDao.findClientsOrderedByCreationTime(
-        now, Lists.newArrayList(createdNow2.getClientId()), 3
+        now, Lists.newArrayList(createdNow2.clientNumber()), 3
     );
 
     assertThat(nextClients)
@@ -305,7 +305,7 @@ class PatrawinDaoTest {
             "Einvoiceaccent, Enableipforecaster, Automatfakturajn, Usebasicoutsourcingsurcharge, IsAgentInFile) " +
             "VALUES (?, ?, ?, 'N', 'N', 'N', NEWID(), 0, 0, 0, 0, 'N', 0, 0)")
         .params(
-            client.getClientId(),
+            client.clientNumber(),
             client.getAlias(),
             timeDbFormatter.format(client.getCreationTime()))
         .run();
@@ -315,9 +315,9 @@ class PatrawinDaoTest {
     // Let's query the created case so we can have reference to the actual created date
     return fluentJdbc.query()
         .select("SELECT Kundnr, Kortnamnkund, Skapatdat FROM KUND_24 WHERE Kundnr = ?")
-        .params(client.getClientId())
+        .params(client.clientNumber())
         .singleResult(rs -> ImmutableClient.builder()
-            .clientId(rs.getString(1))
+            .clientNumber(rs.getString(1))
             .alias(rs.getString(2))
             .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
             .build());

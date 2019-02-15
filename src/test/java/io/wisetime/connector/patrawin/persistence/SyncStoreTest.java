@@ -129,17 +129,17 @@ class SyncStoreTest {
   }
 
   @Test
-  void getLastSyncedClientIds_none() {
-    when(connectorStore.getString("printLast-synced-client-ids-csv")).thenReturn(Optional.empty());
-    assertThat(syncStore.getLastSyncedClientIds())
+  void getLastSyncedClientNumbers_none() {
+    when(connectorStore.getString("printLast-synced-client-numbers-csv")).thenReturn(Optional.empty());
+    assertThat(syncStore.getLastSyncedClientNumbers())
         .as("No clients have been synced yet")
         .hasSize(0);
   }
 
   @Test
-  void getLastSyncedClientIds_some() {
-    when(connectorStore.getString("printLast-synced-client-ids-csv")).thenReturn(Optional.of("1@@2@@3"));
-    assertThat(syncStore.getLastSyncedClientIds())
+  void getLastSyncedClientNumbers_some() {
+    when(connectorStore.getString("printLast-synced-client-numbers-csv")).thenReturn(Optional.of("1@@2@@3"));
+    assertThat(syncStore.getLastSyncedClientNumbers())
         .as("Some clients have been synced")
         .containsExactly("1", "2", "3");
   }
@@ -151,17 +151,17 @@ class SyncStoreTest {
 
     syncStore.setLastSyncedClients(ImmutableList.of(
         ImmutableClient.builder()
-            .clientId("1")
+            .clientNumber("1")
             .alias("")
             .creationTime(earlier)
             .build(),
         ImmutableClient.builder()
-            .clientId("3")
+            .clientNumber("3")
             .alias("")
             .creationTime(earlier)
             .build(),
         ImmutableClient.builder()
-            .clientId("2")
+            .clientNumber("2")
             .alias("")
             .creationTime(later)
             .build()
@@ -177,7 +177,7 @@ class SyncStoreTest {
 
     assertThat(keys.get(0)).isEqualTo("printLast-synced-client-creation-time");
     assertThat(values.get(0)).isEqualTo(later.toString());
-    assertThat(keys.get(1)).isEqualTo("printLast-synced-client-ids-csv");
+    assertThat(keys.get(1)).isEqualTo("printLast-synced-client-numbers-csv");
     assertThat(values.get(1)).isEqualTo("2");
   }
 }
