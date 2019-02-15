@@ -233,7 +233,7 @@ public class PatrawinConnector implements WiseTimeConnector {
         .useExperienceRating()
         .calculate()
         .getPerTagDuration());
-    // TODO: fix offset
+
     final OffsetDateTime activityStartTimeOffset = activityStartTime.get().atOffset(ZoneOffset.ofHours(0));
 
     final Function<String, String> createWorklog = caseOrClientId -> {
