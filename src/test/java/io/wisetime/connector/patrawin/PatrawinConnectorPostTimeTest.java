@@ -350,7 +350,6 @@ public class PatrawinConnectorPostTimeTest {
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
 
-    // TODO: replace hardcoded 0 offset hours
     final OffsetDateTime expectedActivityStartTime = OffsetDateTime.of(2018, 11, 1, 14, 0, 0, 0, ZoneOffset.ofHours(0));
     assertThat(worklogCaptor.getValue().getStartTime())
         .isEqualTo(expectedActivityStartTime);
