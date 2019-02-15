@@ -79,17 +79,17 @@ class SyncStoreTest {
 
     syncStore.setLastSyncedCases(ImmutableList.of(
         ImmutableCase.builder()
-            .id("1")
+            .caseNumber("1")
             .description("")
             .creationTime(earlier)
             .build(),
         ImmutableCase.builder()
-            .id("2")
+            .caseNumber("2")
             .description("")
             .creationTime(later)
             .build(),
         ImmutableCase.builder()
-            .id("3")
+            .caseNumber("3")
             .description("")
             .creationTime(later)
             .build()
@@ -151,17 +151,17 @@ class SyncStoreTest {
 
     syncStore.setLastSyncedClients(ImmutableList.of(
         ImmutableClient.builder()
-            .id("1")
+            .clientId("1")
             .alias("")
             .creationTime(earlier)
             .build(),
         ImmutableClient.builder()
-            .id("3")
+            .clientId("3")
             .alias("")
             .creationTime(earlier)
             .build(),
         ImmutableClient.builder()
-            .id("2")
+            .clientId("2")
             .alias("")
             .creationTime(later)
             .build()

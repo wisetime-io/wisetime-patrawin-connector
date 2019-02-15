@@ -18,16 +18,18 @@ import io.wisetime.generated.connect.UpsertTagRequest;
  * @author shane.xie@practiceinsight.io
  */
 @Value.Immutable
-public interface Case extends Identifiable {
+public interface Case {
+  String getCaseNumber();
+
   String getDescription();
 
   LocalDateTime getCreationTime();
 
   default UpsertTagRequest toUpsertTagRequest(final String path) {
     return new UpsertTagRequest()
-        .name(getId())
+        .name(getCaseNumber())
         .description(getDescription())
         .path(path)
-        .additionalKeywords(ImmutableList.of(getId()));
+        .additionalKeywords(ImmutableList.of(getCaseNumber()));
   }
 }

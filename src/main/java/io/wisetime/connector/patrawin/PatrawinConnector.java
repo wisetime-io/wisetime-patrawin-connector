@@ -120,7 +120,7 @@ public class PatrawinConnector implements WiseTimeConnector {
         log.info("Detected {} new {}: {}",
             cases.size(),
             cases.size() > 1 ? "cases" : "case",
-            cases.stream().map(Case::getId).collect(Collectors.joining(", ")));
+            cases.stream().map(Case::getCaseNumber).collect(Collectors.joining(", ")));
 
         final List<UpsertTagRequest> upsertRequests = cases
             .stream()
@@ -158,7 +158,7 @@ public class PatrawinConnector implements WiseTimeConnector {
         log.info("Detected {} new {}: {}",
             clients.size(),
             clients.size() > 1 ? "clients" : "client",
-            clients.stream().map(Client::getId).collect(Collectors.joining(", ")));
+            clients.stream().map(Client::getClientId).collect(Collectors.joining(", ")));
 
         final List<UpsertTagRequest> upsertRequests = clients
             .stream()
@@ -206,7 +206,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
     final Set<String> timeGroupModifiers = getTimeGroupModifiers(timeGroup);
     if (timeGroupModifiers.size() > 1) {
-      return PostResult.PERMANENT_FAILURE.withMessage("Time group contains different modifiers " + timeGroupModifiers);
+      return PostResult.PERMANENT_FAILURE.withMessage("Time group contains different activity codes " + timeGroupModifiers);
     }
 
     final String timeGroupModifier = timeGroupModifiers.iterator().next();
@@ -216,11 +216,11 @@ public class PatrawinConnector implements WiseTimeConnector {
     try {
       activityCode = Integer.parseInt(modifier);
     } catch (NumberFormatException e) {
-      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid format of the modifier " + modifier);
+      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid format of the activity code " + modifier);
     }
 
     if (!patrawinDao.doesActivityCodeExist(activityCode)) {
-      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid modifier " + modifier);
+      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid activity code " + modifier);
     }
 
     final String narrative = narrativeFormatter.format(timeGroup);

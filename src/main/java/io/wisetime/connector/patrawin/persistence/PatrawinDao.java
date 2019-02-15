@@ -93,7 +93,7 @@ public class PatrawinDao {
       selectQuery.namedParam("excludedCaseNumbers", excludedCaseNumbers);
     }
     return selectQuery.listResult(rs -> ImmutableCase.builder()
-        .id(rs.getString(1))
+        .caseNumber(rs.getString(1))
         .description(rs.getString(2))
         .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
@@ -129,7 +129,7 @@ public class PatrawinDao {
       selectQuery.namedParam("excludedClientIds", excludedClientIds);
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
-        .id(rs.getString(1))
+        .clientId(rs.getString(1))
         .alias(rs.getString(2))
         .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()

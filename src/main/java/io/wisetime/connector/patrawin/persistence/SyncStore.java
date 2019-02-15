@@ -86,7 +86,7 @@ public class SyncStore {
     connectorStore.putString(LAST_SYNCED_CASE_CREATION_TIME_KEY, lastCaseCreationTime.toString());
     connectorStore.putString(LAST_SYNCED_CASE_NUMBERS_KEY, lastSyncedCases.stream()
         .filter(lastSyncedCase -> lastSyncedCase.getCreationTime().equals(lastCaseCreationTime))
-        .map(Case::getId)
+        .map(Case::getCaseNumber)
         .collect(Collectors.joining(DELIMITER)));
   }
 
@@ -101,7 +101,7 @@ public class SyncStore {
     connectorStore.putString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY, lastClientCreationTime.toString());
     connectorStore.putString(LAST_SYNCED_CLIENT_IDS_KEY, lastSyncedClients.stream()
         .filter(lastSyncedClient -> lastSyncedClient.getCreationTime().equals(lastClientCreationTime))
-        .map(Client::getId)
+        .map(Client::getClientId)
         .collect(Collectors.joining(DELIMITER)));
   }
 }

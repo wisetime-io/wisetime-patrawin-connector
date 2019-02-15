@@ -170,14 +170,14 @@ public class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequestsCaptor.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(case1.getId())
+                .name(case1.getCaseNumber())
                 .description(case1.getDescription())
-                .additionalKeywords(ImmutableList.of(case1.getId()))
+                .additionalKeywords(ImmutableList.of(case1.getCaseNumber()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(case2.getId())
+                .name(case2.getCaseNumber())
                 .description(case2.getDescription())
-                .additionalKeywords(ImmutableList.of(case2.getId()))
+                .additionalKeywords(ImmutableList.of(case2.getCaseNumber()))
                 .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Case>> storeCasesCaptor = ArgumentCaptor.forClass(List.class);
@@ -251,14 +251,14 @@ public class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequests.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(client1.getId())
+                .name(client1.getClientId())
                 .description(client1.getAlias())
-                .additionalKeywords(ImmutableList.of(client1.getId()))
+                .additionalKeywords(ImmutableList.of(client1.getClientId()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(client2.getId())
+                .name(client2.getClientId())
                 .description(client2.getAlias())
-                .additionalKeywords(ImmutableList.of(client2.getId()))
+                .additionalKeywords(ImmutableList.of(client2.getClientId()))
                 .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Client>> storeClientsCaptor = ArgumentCaptor.forClass(List.class);

@@ -18,16 +18,18 @@ import io.wisetime.generated.connect.UpsertTagRequest;
  * @author shane.xie@practiceinsight.io
  */
 @Value.Immutable
-public interface Client extends Identifiable {
+public interface Client {
+  String getClientId();
+
   String getAlias();
 
   LocalDateTime getCreationTime();
 
   default UpsertTagRequest toUpsertTagRequest(final String path) {
     return new UpsertTagRequest()
-        .name(getId())
+        .name(getClientId())
         .description(getAlias())
         .path(path)
-        .additionalKeywords(ImmutableList.of(getId()));
+        .additionalKeywords(ImmutableList.of(getClientId()));
   }
 }
