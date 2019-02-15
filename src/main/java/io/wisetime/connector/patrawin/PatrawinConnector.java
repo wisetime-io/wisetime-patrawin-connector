@@ -274,7 +274,7 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   private final Function<Tag, Optional<String>> findCaseOrClientId = tag -> {
-    String id = tag.getName();
+    final String id = tag.getName();
     if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
       return Optional.of(id);
     }
@@ -303,7 +303,7 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   @VisibleForTesting
-  static <T> String printLast(List<T> items) {
+  static <T> String printLast(final List<T> items) {
     if (items.size() == 0) {
       return "None yet";
     }
