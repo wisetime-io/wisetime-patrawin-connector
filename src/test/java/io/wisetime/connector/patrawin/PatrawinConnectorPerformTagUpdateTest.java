@@ -6,6 +6,7 @@ package io.wisetime.connector.patrawin;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Guice;
+import com.google.inject.Injector;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -13,7 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.io.IOException;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 
@@ -21,6 +22,13 @@ import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.integrate.ConnectorModule;
+import io.wisetime.connector.patrawin.fake.FakeCaseClientGenerator;
+import io.wisetime.connector.patrawin.model.Case;
+import io.wisetime.connector.patrawin.model.Client;
+import io.wisetime.connector.patrawin.persistence.PatrawinDao;
+import io.wisetime.connector.patrawin.persistence.SyncStore;
+import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
+import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.generated.connect.UpsertTagRequest;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -46,7 +54,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
   private static final String TAG_UPSERT_PATH = "/test/path/";
 
-  private static RandomDataGenerator randomDataGenerator = new RandomDataGenerator();
+  private static FakeCaseClientGenerator fakeGenerator = new FakeCaseClientGenerator();
   private static PatrawinConnector connector;
 
   private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
@@ -57,10 +65,11 @@ public class PatrawinConnectorPerformTagUpdateTest {
   static void setUp() {
     RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_PATH, TAG_UPSERT_PATH);
 
-    connector = spy(
-        Guice.createInjector(binder -> binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao))
-            .getInstance(PatrawinConnector.class)
-    );
+    Injector injector = Guice.createInjector(binder -> {
+      binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao);
+      binder.bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
+    });
+    connector = spy(injector.getInstance(PatrawinConnector.class));
 
     // Ensure PatrawinConnector#init will not fail
     doReturn(true)
@@ -79,15 +88,16 @@ public class PatrawinConnectorPerformTagUpdateTest {
     reset(patrawinDao);
     reset(apiClient);
     reset(syncStore);
+    reset(connector);
   }
 
   @Test
   void performTagUpdate_data_for_two_loops() {
     when(patrawinDao.findCasesOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(randomDataGenerator.randomCases(3))
+        .thenReturn(fakeGenerator.randomCases(3))
         .thenReturn(ImmutableList.of());
     when(patrawinDao.findClientsOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(randomDataGenerator.randomClients(3))
+        .thenReturn(fakeGenerator.randomClients(3))
         .thenReturn(ImmutableList.of());
 
     connector.performTagUpdate();
@@ -110,7 +120,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
   @Test
   void syncCases_error_during_io() throws IOException {
     when(patrawinDao.findCasesOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(ImmutableList.of(randomDataGenerator.randomCase()));
+        .thenReturn(ImmutableList.of(fakeGenerator.randomCase()));
 
     IOException apiException = new IOException("Expected Exception");
     doThrow(apiException)
@@ -127,10 +137,10 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
   @Test
   void syncCases_some_found() throws IOException {
-    Case case1 = randomDataGenerator.randomCase();
-    Case case2 = randomDataGenerator.randomCase();
+    Case case1 = fakeGenerator.randomCase();
+    Case case2 = fakeGenerator.randomCase();
 
-    Instant lastSyncedCaseCreationTime = Instant.EPOCH;
+    LocalDateTime lastSyncedCaseCreationTime = LocalDateTime.MIN;
     doReturn(lastSyncedCaseCreationTime)
         .when(syncStore)
         .getLastSyncedCaseCreationTime();
@@ -140,7 +150,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
         .when(syncStore)
         .getLastSyncedCaseNumbers();
 
-    ArgumentCaptor<Instant> lastSyncedCaseCreationTimeCaptor = ArgumentCaptor.forClass(Instant.class);
+    ArgumentCaptor<LocalDateTime> lastSyncedCaseCreationTimeCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
     ArgumentCaptor<List> lastSyncedCaseNumbersCaptor = ArgumentCaptor.forClass(List.class);
     when(patrawinDao.findCasesOrderedByCreationTime(lastSyncedCaseCreationTimeCaptor.capture(),
         lastSyncedCaseNumbersCaptor.capture(), anyInt()))
@@ -168,8 +178,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
                 .name(case2.getCaseNumber())
                 .description(case2.getDescription())
                 .additionalKeywords(ImmutableList.of(case2.getCaseNumber()))
-                .path(TAG_UPSERT_PATH)
-        );
+                .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Case>> storeCasesCaptor = ArgumentCaptor.forClass(List.class);
     verify(syncStore, times(1)).setLastSyncedCases(storeCasesCaptor.capture());
@@ -192,7 +201,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
   @Test
   void syncClients_error_during_io() throws IOException {
     when(patrawinDao.findClientsOrderedByCreationTime(any(), anyList(), anyInt()))
-        .thenReturn(ImmutableList.of(randomDataGenerator.randomClient()));
+        .thenReturn(ImmutableList.of(fakeGenerator.randomClient()));
 
     IOException apiException = new IOException("Expected Exception");
     doThrow(apiException)
@@ -209,10 +218,10 @@ public class PatrawinConnectorPerformTagUpdateTest {
 
   @Test
   void syncClients_some_found() throws IOException {
-    Client client1 = randomDataGenerator.randomClient();
-    Client client2 = randomDataGenerator.randomClient();
+    Client client1 = fakeGenerator.randomClient();
+    Client client2 = fakeGenerator.randomClient();
 
-    Instant lastSyncedClientCreationTime = Instant.EPOCH;
+    LocalDateTime lastSyncedClientCreationTime = LocalDateTime.MIN;
     doReturn(lastSyncedClientCreationTime)
         .when(syncStore)
         .getLastSyncedClientCreationTime();
@@ -220,9 +229,9 @@ public class PatrawinConnectorPerformTagUpdateTest {
     List<String> lastSyncedClientNumbers = Collections.emptyList();
     doReturn(lastSyncedClientNumbers)
         .when(syncStore)
-        .getLastSyncedClientIds();
+        .getLastSyncedClientNumbers();
 
-    ArgumentCaptor<Instant> lastSyncedClientsCreationTimeCaptor = ArgumentCaptor.forClass(Instant.class);
+    ArgumentCaptor<LocalDateTime> lastSyncedClientsCreationTimeCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
     ArgumentCaptor<List> lastSyncedClientsNumbersCaptor = ArgumentCaptor.forClass(List.class);
     when(patrawinDao.findClientsOrderedByCreationTime(lastSyncedClientsCreationTimeCaptor.capture(),
         lastSyncedClientsNumbersCaptor.capture(), anyInt()))
@@ -242,16 +251,15 @@ public class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequests.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(client1.getClientId())
+                .name(client1.clientNumber())
                 .description(client1.getAlias())
-                .additionalKeywords(ImmutableList.of(client1.getClientId()))
+                .additionalKeywords(ImmutableList.of(client1.clientNumber()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(client2.getClientId())
+                .name(client2.clientNumber())
                 .description(client2.getAlias())
-                .additionalKeywords(ImmutableList.of(client2.getClientId()))
-                .path(TAG_UPSERT_PATH)
-        );
+                .additionalKeywords(ImmutableList.of(client2.clientNumber()))
+                .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Client>> storeClientsCaptor = ArgumentCaptor.forClass(List.class);
     verify(syncStore, times(1)).setLastSyncedClients(storeClientsCaptor.capture());

@@ -2,7 +2,7 @@
  * Copyright (c) 2019 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.persistence;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,9 +10,12 @@ import org.mockito.ArgumentCaptor;
 import org.testcontainers.shaded.com.google.common.collect.ImmutableList;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import io.wisetime.connector.datastore.ConnectorStore;
+import io.wisetime.connector.patrawin.model.ImmutableCase;
+import io.wisetime.connector.patrawin.model.ImmutableClient;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
@@ -49,7 +52,7 @@ class SyncStoreTest {
     final LocalDateTime now = LocalDateTime.now();
     when(connectorStore.getString("printLast-synced-case-creation-time")).thenReturn(Optional.of(now.toString()));
     assertThat(syncStore.getLastSyncedCaseCreationTime())
-        .as("We should get back the correct Instant value")
+        .as("We should get back the correct LocalDateTime value")
         .isEqualTo(now);
   }
 
@@ -84,17 +87,26 @@ class SyncStoreTest {
             .caseNumber("2")
             .description("")
             .creationTime(later)
+            .build(),
+        ImmutableCase.builder()
+            .caseNumber("3")
+            .description("")
+            .creationTime(later)
             .build()
     ));
 
-    ArgumentCaptor<String> caseKeysCaptor = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<String> caseValuesCaptor = ArgumentCaptor.forClass(String.class);
-    verify(connectorStore, times(2)).putString(
-        caseKeysCaptor.capture(), caseValuesCaptor.capture());
-    assertThat(caseKeysCaptor.getAllValues().get(0)).isEqualTo("printLast-synced-case-creation-time");
-    assertThat(caseValuesCaptor.getAllValues().get(0)).isEqualTo(later.toString());
-    assertThat(caseKeysCaptor.getAllValues().get(1)).isEqualTo("printLast-synced-case-numbers-csv");
-    assertThat(caseValuesCaptor.getAllValues().get(1)).isEqualTo("1@@2");
+    ArgumentCaptor<String> keysCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> valuesCaptor = ArgumentCaptor.forClass(String.class);
+
+    verify(connectorStore, times(2)).putString(keysCaptor.capture(), valuesCaptor.capture());
+
+    List<String> keys = keysCaptor.getAllValues();
+    List<String> values = valuesCaptor.getAllValues();
+
+    assertThat(keys.get(0)).isEqualTo("printLast-synced-case-creation-time");
+    assertThat(values.get(0)).isEqualTo(later.toString());
+    assertThat(keys.get(1)).isEqualTo("printLast-synced-case-numbers-csv");
+    assertThat(values.get(1)).isEqualTo("2@@3");
   }
 
   // Clients:
@@ -112,22 +124,22 @@ class SyncStoreTest {
     final LocalDateTime now = LocalDateTime.now();
     when(connectorStore.getString("printLast-synced-case-creation-time")).thenReturn(Optional.of(now.toString()));
     assertThat(syncStore.getLastSyncedCaseCreationTime())
-        .as("We should get back the correct Instant value")
+        .as("We should get back the correct LocalDateTime value")
         .isEqualTo(now);
   }
 
   @Test
-  void getLastSyncedClientIds_none() {
-    when(connectorStore.getString("printLast-synced-client-ids-csv")).thenReturn(Optional.empty());
-    assertThat(syncStore.getLastSyncedClientIds())
+  void getLastSyncedClientNumbers_none() {
+    when(connectorStore.getString("printLast-synced-client-numbers-csv")).thenReturn(Optional.empty());
+    assertThat(syncStore.getLastSyncedClientNumbers())
         .as("No clients have been synced yet")
         .hasSize(0);
   }
 
   @Test
-  void getLastSyncedClientIds_some() {
-    when(connectorStore.getString("printLast-synced-client-ids-csv")).thenReturn(Optional.of("1@@2@@3"));
-    assertThat(syncStore.getLastSyncedClientIds())
+  void getLastSyncedClientNumbers_some() {
+    when(connectorStore.getString("printLast-synced-client-numbers-csv")).thenReturn(Optional.of("1@@2@@3"));
+    assertThat(syncStore.getLastSyncedClientNumbers())
         .as("Some clients have been synced")
         .containsExactly("1", "2", "3");
   }
@@ -139,24 +151,33 @@ class SyncStoreTest {
 
     syncStore.setLastSyncedClients(ImmutableList.of(
         ImmutableClient.builder()
-            .clientId("1")
+            .clientNumber("1")
             .alias("")
             .creationTime(earlier)
             .build(),
         ImmutableClient.builder()
-            .clientId("2")
+            .clientNumber("3")
+            .alias("")
+            .creationTime(earlier)
+            .build(),
+        ImmutableClient.builder()
+            .clientNumber("2")
             .alias("")
             .creationTime(later)
             .build()
     ));
 
-    ArgumentCaptor<String> clientKeysCaptor = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<String> clientValuesCaptor = ArgumentCaptor.forClass(String.class);
-    verify(connectorStore, times(2)).putString(
-        clientKeysCaptor.capture(), clientValuesCaptor.capture());
-    assertThat(clientKeysCaptor.getAllValues().get(0)).isEqualTo("printLast-synced-client-creation-time");
-    assertThat(clientValuesCaptor.getAllValues().get(0)).isEqualTo(later.toString());
-    assertThat(clientKeysCaptor.getAllValues().get(1)).isEqualTo("printLast-synced-client-ids-csv");
-    assertThat(clientValuesCaptor.getAllValues().get(1)).isEqualTo("1@@2");
+    ArgumentCaptor<String> keysCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> valuesCaptor = ArgumentCaptor.forClass(String.class);
+
+    verify(connectorStore, times(2)).putString(keysCaptor.capture(), valuesCaptor.capture());
+
+    List<String> keys = keysCaptor.getAllValues();
+    List<String> values = valuesCaptor.getAllValues();
+
+    assertThat(keys.get(0)).isEqualTo("printLast-synced-client-creation-time");
+    assertThat(values.get(0)).isEqualTo(later.toString());
+    assertThat(keys.get(1)).isEqualTo("printLast-synced-client-numbers-csv");
+    assertThat(values.get(1)).isEqualTo("2");
   }
 }

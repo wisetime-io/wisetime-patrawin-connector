@@ -2,7 +2,7 @@
  * Copyright (c) 2018 Practice Insight Pty Ltd. All Rights Reserved.
  */
 
-package io.wisetime.connector.patrawin;
+package io.wisetime.connector.patrawin.fake;
 
 import com.github.javafaker.Faker;
 
@@ -23,14 +23,17 @@ import static java.lang.String.format;
  * Generator of entities with random field values. Typically used to mock real data.
  *
  * @author shane.xie@practiceinsight.io
+ * @author galya.bogdanova@m.practiceinsight.io
  */
-public class FakeEntities {
+public class FakeTimeGroupGenerator {
 
   private static final Faker FAKER = new Faker();
   private static final String TAG_PATH = format("/%s/%s/", FAKER.lorem().word(), FAKER.lorem().word());
 
   public TimeGroup randomTimeGroup() {
-    final List<TimeRow> timeRows = randomEntities(this::randomTimeRow, 1, 10);
+    final String validTimeRowModifier = validTimeRowModifier();
+    final Supplier<TimeRow> timeRowSupplier = () -> randomTimeRow(validTimeRowModifier);
+    final List<TimeRow> timeRows = randomEntities(timeRowSupplier, 1, 10);
 
     return new TimeGroup()
         .callerKey(FAKER.bothify("#?#?#?#?#?"))
@@ -59,22 +62,35 @@ public class FakeEntities {
   public User randomUser() {
     final String firstName = FAKER.name().firstName();
     final String lastName = FAKER.name().lastName();
+    final String usernameFull = FAKER.name().username();
+    // Usernames in Patrawin DB are up to 6 chars, so externalId will apply the constraint.
+    final String username = usernameFull.length() > 6 ? usernameFull.substring(0, 6) : usernameFull;
     return new User()
         .name(firstName + " " + lastName)
         .email(FAKER.internet().emailAddress(firstName))
-        .externalId(FAKER.internet().emailAddress(firstName + "." + lastName))
+        .externalId(username)
         .businessRole(FAKER.company().profession())
         .experienceWeightingPercent(FAKER.random().nextInt(0, 100));
   }
 
   public TimeRow randomTimeRow() {
     return new TimeRow()
-        .activity(FAKER.lorem().characters(30, 100))
+        .activity(FAKER.lorem().characters(10, 30))
         .activityHour(2018110100 + FAKER.random().nextInt(1, 23))
+        .firstObservedInHour(FAKER.number().numberBetween(0, 59))
         .durationSecs(FAKER.random().nextInt(120, 600))
         .submittedDate(Long.valueOf(FAKER.numerify("20180#1#1#5#2####")))
-        .modifier(FAKER.lorem().word())
+        .modifier(validTimeRowModifier())
+        .description(FAKER.lorem().sentence())
         .source(randomEnum(TimeRow.SourceEnum.class));
+  }
+
+  public TimeRow randomTimeRow(String modifier) {
+    return randomTimeRow().modifier(modifier);
+  }
+
+  private String validTimeRowModifier() {
+    return String.valueOf(FAKER.number().randomNumber());
   }
 
   private <T> List<T> randomEntities(final Supplier<T> supplier, final int min, final int max) {
