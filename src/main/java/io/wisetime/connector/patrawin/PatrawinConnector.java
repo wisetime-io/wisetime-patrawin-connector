@@ -151,7 +151,8 @@ public class PatrawinConnector implements WiseTimeConnector {
         tagUpsertBatchSize());
 
     if (clients.isEmpty()) {
-      log.info("No new client tags found. Last client ID previously synced: {}", printLast(lastPreviouslySyncedClientNumbers));
+      log.info("No new client tags found. Last client ID previously synced: {}",
+          printLast(lastPreviouslySyncedClientNumbers));
       return false;
     } else {
       try {
@@ -234,8 +235,6 @@ public class PatrawinConnector implements WiseTimeConnector {
         .calculate()
         .getPerTagDuration());
 
-    final OffsetDateTime activityStartTimeOffset = activityStartTime.get().atOffset(ZoneOffset.ofHours(0));
-
     final Function<String, String> createWorklog = caseOrClientNumber -> {
       final ImmutableWorklog worklog = ImmutableWorklog
           .builder()
@@ -243,7 +242,7 @@ public class PatrawinConnector implements WiseTimeConnector {
           .usernameOrEmail(authorUsernameOrEmail)
           .activityCode(activityCode)
           .narrative(narrative)
-          .startTime(activityStartTimeOffset)
+          .startTime(OffsetDateTime.of(activityStartTime.get(), ZoneOffset.UTC))
           .durationSeconds(workedTimeSeconds)
           .chargeableTimeSeconds(chargeableTimeSeconds)
           .build();
@@ -261,7 +260,8 @@ public class PatrawinConnector implements WiseTimeConnector {
               .map(Optional::get)
               .map(createWorklog)
               .forEach(caseOrClientNumber ->
-                  log.info("Posted time to Patrawin case / client {} on behalf of {}", caseOrClientNumber, authorUsernameOrEmail)
+                  log.info("Posted time to Patrawin case / client {} on behalf of {}",
+                      caseOrClientNumber, authorUsernameOrEmail)
               )
       );
     } catch (RuntimeException e) {

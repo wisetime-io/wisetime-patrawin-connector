@@ -17,6 +17,9 @@ import org.codejargon.fluentjdbc.api.query.SelectQuery;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.sql.CallableStatement;
+import java.sql.SQLException;
+import java.sql.Types;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -186,25 +189,24 @@ public class PatrawinDao {
    *
    * Return codes: SUCCESS, CASE_OR_CLIENT_ID_NOT_FOUND, USER_NOT_FOUND, ACTIVITY_CODE_NOT_FOUND
    */
-  public void createWorklog(Worklog worklog) {
-    // TODO: rework to handle return codes:
-    //  https://github.com/soulwing/fluent-jdbc/wiki/Calling-Stored-Procedures
-    query().update("EXEC post_time " +
-        "@case_or_client_id     = :case_or_client_id, " +
-        "@username_or_email     = :username_or_email, " +
-        "@activity_code         = :activity_code, " +
-        "@narrative             = :narrative, " +
-        "@start_time            = :start_time, " +
-        "@total_time_secs       = :total_time_secs" +
-        "@chargeable_time_secs  = :chargeable_time_secs")
-        .namedParam("case_or_client_id", worklog.getCaseOrClientNumber())
-        .namedParam("username_or_email", worklog.getUsernameOrEmail())
-        .namedParam("activity_code", worklog.getActivityCode())
-        .namedParam("narrative", worklog.getNarrative())
-        .namedParam("start_time", timeDbFormatter.format(worklog.getStartTime()))
-        .namedParam("total_time_secs", worklog.getDurationSeconds())
-        .namedParam("chargeable_time_secs", worklog.getChargeableTimeSeconds())
-        .run();
+  public int createWorklog(Worklog worklog) {
+    return query().plainConnection(con -> {
+      try (CallableStatement cs = con.prepareCall("{ ? = call pw_PostTime(?, ?, ?, ?, ?, ?, ?, ?) }")) {
+        cs.registerOutParameter(1, Types.INTEGER);
+        cs.setString(2, worklog.getCaseOrClientNumber());
+        cs.setString(3, worklog.getUsernameOrEmail());
+        cs.setInt(4, worklog.getActivityCode());
+        cs.setString(5, worklog.getNarrative());
+        cs.setString(6, "");
+        cs.setString(7, timeDbFormatter.format(worklog.getStartTime()));
+        cs.setInt(8, worklog.getDurationSeconds());
+        cs.setInt(9, worklog.getChargeableTimeSeconds());
+        cs.execute();
+        return cs.getInt(1);
+      } catch (SQLException ex) {
+        throw new RuntimeException(ex);
+      }
+    });
   }
 
   public boolean canQueryDb() {

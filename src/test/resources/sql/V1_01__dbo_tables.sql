@@ -1,630 +1,5 @@
--- A schema dump of selected tables from Patrawin version 13.0.73.0 (-2), taken on 31st January 2019
+-- A schema dump of selected tables from Patrawin version 13.2.10.0 (-2), taken on 27th February 2019
 
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [FRIST_ARENDE_18](
-	[Avgiftskod] [smallint] NOT NULL,
-	[Arendenr] [nvarchar](50) NOT NULL,
-	[Frist] [datetime] NOT NULL,
-	[Fristmedstraff] [datetime] NOT NULL,
-	[Specialfristjn] [nvarchar](1) NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Id] [int] IDENTITY(1,1) NOT NULL,
- CONSTRAINT [PK_FRIST_ARENDE_18] PRIMARY KEY CLUSTERED
-(
-	[Id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION  [pw_AnnuityTerms]
-/*---------------------------------------------------------------------------------------------------------------------------
-
-	Author:		Stefan Salomonsson / PatraWin Data AB
-	Created	:	2005-10-17
-
-	Description: 	Get the next annuity term for each case, based on date interval
-
-	Changed:
-
-	By					Date		Description
-	---------------------------------------------------------------------------------------------------------------------
-	Stefan Salomonsson	2007-10-24	Changed from varchar to nvarchar
------------------------------------------------------------------------------------------------------------------------------*/
-(
-	@FristStart datetime = N'1753-01-01',
-	@FristSlut datetime = N'9999-12-31'
-)
-RETURNS TABLE
-AS
-	RETURN
-	(
-		SELECT DISTINCT
-			F.Arendenr,
-			F.Frist
-		FROM
-			FRIST_ARENDE_18 F
-		WHERE
-			F.Rowid =
-			(
-				SELECT TOP 1
-					Rowid
-				FROM
-					FRIST_ARENDE_18
-				WHERE
-					Arendenr = F.Arendenr AND
-					Frist BETWEEN @FristStart AND @FristSlut
-				ORDER BY
-					Frist
-			)
-	)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [FRISTKOD_73](
-	[Fristkod] [nvarchar](15) NOT NULL,
-	[Extern] [nvarchar](1) NULL,
-	[Datumkod] [nvarchar](3) NULL,
-	[Klasskod] [nvarchar](1) NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Fhandlagg] [int] NULL,
-	[Onnew] [nvarchar](6) NULL,
-	[Onend] [nvarchar](6) NULL,
-	[Doublecheckonnew] [smallint] NULL,
-	[Useassistant] [smallint] NOT NULL,
-	[Doublecheckonend] [smallint] NULL,
-	[Showifattorney] [smallint] NOT NULL,
-	[Description] [ntext] NULL,
-	[Useattorney] [smallint] NOT NULL,
-	[Parent] [nvarchar](6) NULL,
-	[Reminderfrom] [int] NULL,
-	[Reminderoffsetmonths] [int] NULL,
-	[Reminderoffsetdays] [int] NULL,
-	[Importance] [int] NOT NULL,
-	[State] [int] NOT NULL
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [FRISTKODNAMN_167](
-	[Fristkod] [nvarchar](6) NOT NULL,
-	[Sprakkod] [nvarchar](1) NOT NULL,
-	[Fristkodnamn] [nvarchar](50) NULL,
-	[Rowid] [timestamp] NOT NULL
-) ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [AKTFRIST_76](
-	[Arendenr] [nvarchar](50) NOT NULL,
-	[Lopnr] [smallint] NOT NULL,
-	[Fristkod] [nvarchar](6) NOT NULL,
-	[Fhandlagg] [int] NULL,
-	[Belopp] [decimal](11, 2) NULL,
-	[Sidor] [nvarchar](4) NULL,
-	[Utfdag] [datetime] NOT NULL,
-	[Frist] [datetime] NOT NULL,
-	[Rapportsand] [datetime] NULL,
-	[Paminnelse] [datetime] NULL,
-	[Instrmottagen] [datetime] NULL,
-	[Instrsand] [datetime] NULL,
-	[Slutdag] [datetime] NULL,
-	[Svaromal] [datetime] NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Aktfrist_76_id] [int] IDENTITY(1,1) NOT NULL,
-	[Fritext] [ntext] NULL,
-	[Moduleid] [uniqueidentifier] NULL,
-	[Fritext2] [ntext] NULL,
-	[Reviewed] [bit] NOT NULL,
-	[Reviewuser] [int] NULL,
-	[Reviewdate] [datetime] NULL,
- CONSTRAINT [PK_AKTFRIST_76] PRIMARY KEY CLUSTERED
-(
-	[Aktfrist_76_id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION  [pw_ApplicationTerms]
-/*---------------------------------------------------------------------------------------------------------------------------
-	Author:		Stefan Salomonsson / PatraWin Data AB
-	Created	:	2005-10-17
-	Description: 	Get the next application term for each case, based on term code and date interval
-	Changed:
-	By					Date		Description
-	---------------------------------------------------------------------------------------------------------------------
-	Stefan Salomonsson	2009-08-26	Increased fristkod to 6 charachters
-	Stefan Salomonsson	2007-10-24	Changed from varchar to nvarchar
------------------------------------------------------------------------------------------------------------------------------*/
-(
-	@Fristkod nvarchar(6) = N'%',
-	@FristStart datetime = N'1753-01-01',
-	@FristSlut datetime = N'9999-12-31',
-	@Extern nvarchar(1) = N'%',
-	@Sprakkod nvarchar(1)
-)
-RETURNS TABLE
-AS
-	RETURN
-	(
-		SELECT DISTINCT
-			A76.Arendenr,
-			A76.Fristkod,
-			F167.Fristkodnamn,
-			A76.Frist,
-			F73.Extern,
-			A76.Instrmottagen,
-			A76.Instrsand,
-			A76.Paminnelse,
-			A76.Rapportsand,
-			A76.Slutdag,
-			A76.Svaromal
-		FROM
-			AKTFRIST_76 A76
-			INNER JOIN FRISTKOD_73 F73 ON A76.Fristkod = F73.Fristkod
-			INNER JOIN FRISTKODNAMN_167 F167 ON A76.Fristkod = F167.Fristkod
-		WHERE
-			F167.Sprakkod = @Sprakkod AND
-			A76.Rowid =
-			(
-				SELECT TOP 1
-					A.Rowid
-				FROM
-					AKTFRIST_76 A
-					INNER JOIN FRISTKOD_73 F ON A.Fristkod = F.Fristkod
-				WHERE
-					A.Arendenr = A76.Arendenr AND
-					A.Fristkod LIKE @Fristkod AND
-					F.Extern LIKE @Extern AND
-					A.Frist BETWEEN @FristStart AND @FristSlut
-				ORDER BY
-					A.Frist
-			)
-	)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [CPA_FRISTER_173](
-	[Arendenr] [nvarchar](50) NOT NULL,
-	[Regelnamns] [nvarchar](50) NULL,
-	[Regelnamne] [nvarchar](50) NULL,
-	[Arforfrist] [nvarchar](5) NULL,
-	[Frist] [smalldatetime] NULL,
-	[Friststraff] [smalldatetime] NULL,
-	[Cparef] [nvarchar](15) NULL,
-	[Rowid] [timestamp] NOT NULL
-) ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [pw_CpaTerms]
-/*---------------------------------------------------------------------------------------------------------------------------
-
-	Author:		Stefan Salomonsson
-	Created	:	2005-10-17
-
-	Description: 	Get the next CPA term for each case, based on date range
-
-	Changed:
-
-	By					Date		Description
-	---------------------------------------------------------------------------------------------------------------------
-	Stefan Salomonsson	2016-03-24	Updated column names
-	Stefan Salomonsson	2007-10-24	Changed from varchar to nvarchar
------------------------------------------------------------------------------------------------------------------------------*/
-(
-	@Regel nvarchar(50) = N'%',
-	@FristStart datetime = N'1753-01-01',
-	@FristSlut datetime = N'9999-12-31',
-	@Sprakkod nvarchar(1)
-)
-RETURNS TABLE
-AS
-	RETURN
-	(
-		SELECT DISTINCT
-			P.Arendenr,
-			CASE @Sprakkod WHEN N'S' THEN Regelnamns ELSE Regelnamne END AS Regelnamn,
-			P.Frist
-		FROM
-			CPA_FRISTER_173 P
-		WHERE
-			P.Rowid =
-			(
-				SELECT TOP 1
-					Rowid
-				FROM
-					CPA_FRISTER_173
-				WHERE
-					Arendenr = P.Arendenr AND
-					CASE @Sprakkod WHEN N'S' THEN Regelnamns ELSE Regelnamne END LIKE @Regel AND
-					Frist BETWEEN @FristStart AND @FristSlut
-				ORDER BY
-					Frist
-			)
-	)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [ENDFRIST_79](
-	[Arendenr] [nvarchar](50) NOT NULL,
-	[Lopnr] [smallint] NOT NULL,
-	[Fristkod] [nvarchar](6) NOT NULL,
-	[Fhandlagg] [int] NULL,
-	[Belopp] [decimal](11, 2) NULL,
-	[Sidor] [nvarchar](4) NULL,
-	[Utfdag] [datetime] NULL,
-	[Frist] [datetime] NULL,
-	[Rapportsand] [datetime] NULL,
-	[Paminnelse] [datetime] NULL,
-	[Instrmottagen] [datetime] NULL,
-	[Instrsand] [datetime] NULL,
-	[Slutdag] [datetime] NULL,
-	[Svaromal] [datetime] NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Aktfrist_76_id] [int] NULL,
-	[Fritext] [ntext] NULL,
-	[Fritext2] [ntext] NULL
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION   [pw_EndedApplicationTerms]
-/*---------------------------------------------------------------------------------------------------------------------------
-
-	Author:		Stefan Salomonsson / PatraWin Data AB
-	Created	:	2005-11-29
-
-	Description: 	Get the previously ended application term for the case
-
-	Changed:
-
-	By					Date		Description
-	---------------------------------------------------------------------------------------------------------------------
-	Stefan Salomonsson	2007-10-24	Changed from varchar to nvarchar
------------------------------------------------------------------------------------------------------------------------------*/
-(
-	@Extern nvarchar(1) = N'%',
-	@Sprakkod nvarchar(1)
-)
-RETURNS TABLE
-AS
-	RETURN
-	(
-		SELECT DISTINCT
-			E79.Arendenr,
-			E79.Frist,
-			E79.Slutdag,
-			E79.Svaromal,
-			F167.Fristkodnamn
-		FROM
-			ENDFRIST_79 E79
-			INNER JOIN FRISTKODNAMN_167 F167 ON E79.Fristkod = F167.Fristkod AND F167.Sprakkod = @Sprakkod
-		WHERE
-			E79.Rowid =
-			(
-				SELECT TOP 1
-					E.Rowid
-				FROM
-					ENDFRIST_79 E
-					INNER JOIN FRISTKOD_73 F ON E.Fristkod = F.Fristkod
-				WHERE
-					E.Arendenr = E79.Arendenr AND
-					F.Extern LIKE @Extern AND
-					E.Slutdag IS NOT NULL
-				ORDER BY
-					E.Frist DESC
-			)
-	)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [UPPF_ARENDE_68](
-	[Arendenr] [nvarchar](50) NOT NULL,
-	[Uppfnr] [nvarchar](7) NOT NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Sortorder] [smallint] NULL,
-	[Kategori] [nvarchar](50) NULL,
-	[Id] [int] IDENTITY(1,1) NOT NULL,
-	[Share] [nvarchar](100) NULL,
- CONSTRAINT [PK_UPPF_ARENDE_68] PRIMARY KEY CLUSTERED
-(
-	[Id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [UPPFINNARE_69](
-	[Uppfnr] [nvarchar](7) NOT NULL,
-	[Landkod] [nvarchar](2) NOT NULL,
-	[Uppfadress1] [nvarchar](100) NULL,
-	[Uppfadress2] [nvarchar](100) NULL,
-	[Uppfadress3] [nvarchar](100) NULL,
-	[Uppfadress4] [nvarchar](100) NULL,
-	[Uppfadress5] [nvarchar](100) NULL,
-	[Uppfkortnamn] [nvarchar](50) NOT NULL,
-	[Uppfkortort] [nvarchar](15) NULL,
-	[Uppfadress6] [nvarchar](100) NULL,
-	[Uppfadress7] [nvarchar](100) NULL,
-	[Hemort] [nvarchar](50) NULL,
-	[Nation] [nvarchar](50) NULL,
-	[Andratdat] [datetime] NULL,
-	[Anv] [int] NULL,
-	[Telefonnr] [nvarchar](50) NULL,
-	[Sprakkod] [nvarchar](1) NOT NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Rowguid] [uniqueidentifier] NOT NULL,
-	[Fritext] [ntext] NULL,
-	[Personnr] [nvarchar](15) NULL,
-	[Kategori] [nvarchar](50) NULL,
-	[Anstalld] [bit] NOT NULL,
-	[Transferconfigurationsetid] [int] NULL,
-	[Meansofcommunication] [int] NULL,
-	[EmailAddresses_To] [nvarchar](max) NULL,
-	[EmailAddresses_Cc] [nvarchar](max) NULL,
-	[EmailAddresses_Bcc] [nvarchar](max) NULL,
- CONSTRAINT [PK_UPPFINNARE_69] PRIMARY KEY CLUSTERED
-(
-	[Uppfnr] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION  [pw_FirstInventorPerCase]
-/*---------------------------------------------------------------------------------------------------------------------------
-
-	Author:		Stefan Salomonsson / PatraWin Data AB
-	Created	:	2005-11-30
-
-	Description: 	Function that returns a table containing the first inventor for every case
-
-	Changed:
-
-	By					Date		Description
-	---------------------------------------------------------------------------------------------------------------------
-	Stefan Salomonsson	2017-12-06	Added Share to the SELECT list
-	Martin Jönsén		2010-05-14	Added inventor Kategori(Kategori2) to the SELECT list
-	Stefan Salomonsson	2009-04-22	Fixed UPPER/lower case problem
-	Stefan Salomonsson	2008-03-31	Added Kategori to the SELECT list
-
------------------------------------------------------------------------------------------------------------------------------*/
-(
-)
-RETURNS TABLE
-AS
-	RETURN
-	(
-		SELECT DISTINCT
-			U68.Arendenr,
-			U68.Uppfnr,
-			U69.Uppfkortnamn,
-			U69.Uppfadress1,
-			U69.Uppfadress2,
-			U68.Kategori,
-			U69.Anstalld,
-			U69.Kategori AS Kategori2,
-			NumInventors = (SELECT COUNT(*) FROM UPPF_ARENDE_68 WHERE Arendenr = U68.Arendenr),
-			U68.Share AS Share
-		FROM
-			UPPF_ARENDE_68 U68
-			INNER JOIN UPPFINNARE_69 U69 ON U68.Uppfnr = U69.Uppfnr
-		WHERE
-			U68.Rowid =
-			(
-				SELECT TOP 1
-					Rowid
-				FROM
-					UPPF_ARENDE_68
-				WHERE
-					Arendenr = U68.Arendenr
-				ORDER BY
-					ISNULL(Sortorder, 9999)
-			)
-	)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [PRIOFRAN_LAND_48](
-	[Arendenr] [nvarchar](50) NOT NULL,
-	[Landkod] [nvarchar](2) NOT NULL,
-	[Prionr] [nvarchar](50) NOT NULL,
-	[Priofran_datum] [datetime] NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Designnr] [nvarchar](2) NULL,
-	[Id] [int] IDENTITY(1,1) NOT NULL,
- CONSTRAINT [PK_PRIOFRAN_LAND_48] PRIMARY KEY NONCLUSTERED
-(
-	[Id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION  [pw_FirstPriorityPerCase]
-/*---------------------------------------------------------------------------------------------------------------------------
-
-	Author:		Stefan Salomonsson / PatraWin Data AB
-	Created	:	2005-11-30
-
-	Description: 	Function that returns a table containg the first priority for every case
-
-	Changed:
-
-	By					Date		Description
-	---------------------------------------------------------------------------------------------------------------------
-	Stefan Salomonsson	2009-04-22	Fixed UPPER/lower case problem
-
------------------------------------------------------------------------------------------------------------------------------*/
-(
-)
-RETURNS TABLE
-AS
-	RETURN
-	(
-		SELECT DISTINCT
-			P.Arendenr,
-			P.Prionr,
-			P.Landkod,
-			P.Priofran_datum,
-			NumPrios = (SELECT COUNT(*) FROM PRIOFRAN_LAND_48 WHERE Arendenr = P.Arendenr)
-		FROM
-			PRIOFRAN_LAND_48 P
-		WHERE
-			P.Rowid =
-			(
-				SELECT TOP 1
-					Rowid
-				FROM
-					PRIOFRAN_LAND_48
-				WHERE
-					Arendenr = P.Arendenr
-				ORDER BY
-					Priofran_datum
-			)
-	)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [REGFRIST_94](
-	[Arendenr] [nvarchar](50) NOT NULL,
-	[Regel] [nvarchar](10) NOT NULL,
-	[Vm] [nvarchar](1) NOT NULL,
-	[Frist] [datetime] NOT NULL,
-	[Friststraff] [datetime] NOT NULL,
-	[Period] [smallint] NULL,
-	[Lopno] [smallint] NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Id] [int] IDENTITY(1,1) NOT NULL,
- CONSTRAINT [PK_REGFRIST_94] PRIMARY KEY CLUSTERED
-(
-	[Id] ASC
-)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
-) ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE TABLE [REGREGEL_93](
-	[Regel] [nvarchar](10) NOT NULL,
-	[Vm] [nvarchar](1) NOT NULL,
-	[Regelnamn] [nvarchar](50) NULL,
-	[Rowid] [timestamp] NOT NULL,
-	[Sprakkod] [nvarchar](1) NOT NULL
-) ON [PRIMARY]
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [pw_RenewalTerms]
-/*---------------------------------------------------------------------------------------------------------------------------
-
-	Author:		Stefan Salomonsson / PatraWin Data AB
-	Created	:	2005-10-17
-
-	Description: 	Get the next renewal term for each case, based on rule and date interval
-
-	Changed:
-
-	By					Date		Description
-	---------------------------------------------------------------------------------------------------------------------
-	Stefan Salomonsson	2007-10-24	Changed from varchar to nvarchar
------------------------------------------------------------------------------------------------------------------------------*/
-(
-	@Regel nvarchar(1) = N'%',
-	@FristStart datetime = N'1753-01-01',
-	@FristSlut datetime = N'9999-12-31',
-	@Sprakkod nvarchar(1)
-)
-RETURNS TABLE
-AS
-	RETURN
-	(
-		SELECT DISTINCT
-			R94.Arendenr,
-			R94.Regel,
-			R93.Regelnamn,
-			R94.Frist
-		FROM
-			REGFRIST_94 R94
-			INNER JOIN Regregel_93 R93 ON R94.Regel = R93.Regel
-		WHERE
-			R93.Sprakkod = @Sprakkod AND
-			R94.Rowid =
-			(
-				SELECT TOP 1
-					Rowid
-				FROM
-					REGFRIST_94
-				WHERE
-					Arendenr = R94.Arendenr AND
-					Regel LIKE @Regel AND
-					Frist BETWEEN @FristStart AND @FristSlut
-				ORDER BY
-					Frist
-			)
-	)
-GO
-SET ANSI_NULLS ON
-GO
-SET QUOTED_IDENTIFIER ON
-GO
-CREATE FUNCTION [pw_FirstNumericSequence](@input nvarchar(max))
-RETURNS nvarchar(max) WITH SCHEMABINDING
-AS
-BEGIN
-	DECLARE @result nvarchar(max)
-	DECLARE @numericIndex int, @alphaIndex int
-
-	SET @numericIndex = PATINDEX('%[0-9]%', @input)
-	IF @numericIndex <= 0
-		RETURN NULL
-
-	SET @result = substring(@input, @numericIndex, LEN(@input))
-	SET @alphaIndex = PATINDEX('%[^0-9]%', @result)
-	IF @alphaIndex <= 0
-		RETURN @result
-
-	RETURN SUBSTRING(@result, 1, PATINDEX('%[^0-9]%', @result) - 1)
-END
-GO
 SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
@@ -840,6 +215,39 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE TABLE [AKTFRIST_76](
+	[Arendenr] [nvarchar](50) NOT NULL,
+	[Lopnr] [smallint] NOT NULL,
+	[Fristkod] [nvarchar](6) NOT NULL,
+	[Fhandlagg] [int] NULL,
+	[Belopp] [decimal](11, 2) NULL,
+	[Sidor] [nvarchar](4) NULL,
+	[Utfdag] [datetime] NOT NULL,
+	[Frist] [datetime] NOT NULL,
+	[Rapportsand] [datetime] NULL,
+	[Paminnelse] [datetime] NULL,
+	[Instrmottagen] [datetime] NULL,
+	[Instrsand] [datetime] NULL,
+	[Slutdag] [datetime] NULL,
+	[Svaromal] [datetime] NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Aktfrist_76_id] [int] IDENTITY(1,1) NOT NULL,
+	[Fritext] [ntext] NULL,
+	[Moduleid] [uniqueidentifier] NULL,
+	[Fritext2] [ntext] NULL,
+	[Reviewed] [bit] NOT NULL,
+	[Reviewuser] [int] NULL,
+	[Reviewdate] [datetime] NULL,
+ CONSTRAINT [PK_AKTFRIST_76] PRIMARY KEY CLUSTERED
+(
+	[Aktfrist_76_id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [AKTFRIST_BEHORIG_294](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[Frist_Id] [int] NOT NULL,
@@ -887,6 +295,26 @@ CREATE TABLE [AKTLAGESHIST_127](
 	[Arendenr] [nvarchar](50) NULL,
 	[Aktlage] [nvarchar](40) NULL,
 	[Rowid] [timestamp] NOT NULL
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [ALTINN_BATCH_RULES_336](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[MessageTitleContaining] [nvarchar](500) NOT NULL,
+	[Class] [int] NULL,
+	[Category] [int] NULL,
+	[Type] [int] NULL,
+	[SecondaryClass] [int] NULL,
+	[SecondaryCategory] [int] NULL,
+	[SecondaryType] [int] NULL,
+	[Filename] [nvarchar](500) NULL,
+ CONSTRAINT [PK_ALTINN_BATCH_RULES_336] PRIMARY KEY CLUSTERED
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
 SET ANSI_NULLS ON
@@ -1337,7 +765,7 @@ CREATE TABLE [AT_LOG_PARAMETER](
 	[AtTime] [datetime] NOT NULL,
 	[AtUser] [nvarchar](135) NOT NULL,
 	[ColumnId] [int] NOT NULL,
-	[ObjectKey] [nvarchar](50) NOT NULL,
+	[ObjectKey] [nvarchar](100) NOT NULL,
 	[ObjectRelationKey] [nvarchar](255) NULL,
 	[OldValue] [nvarchar](4000) NULL,
 	[NewValue] [nvarchar](4000) NULL,
@@ -1997,6 +1425,21 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE TABLE [CPA_FRISTER_173](
+	[Arendenr] [nvarchar](50) NOT NULL,
+	[Regelnamns] [nvarchar](50) NULL,
+	[Regelnamne] [nvarchar](50) NULL,
+	[Arforfrist] [nvarchar](5) NULL,
+	[Frist] [smalldatetime] NULL,
+	[Friststraff] [smalldatetime] NULL,
+	[Cparef] [nvarchar](15) NULL,
+	[Rowid] [timestamp] NOT NULL
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [CPA_RENEWAL_PRICE_283](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[Arendenr] [nvarchar](50) NOT NULL,
@@ -2028,10 +1471,15 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
-CREATE TABLE [CREDITDESCRIPTION_204](
-	[Creditcode] [nvarchar](1) NULL,
+CREATE TABLE [CREDIT_LEVEL_334](
+	[Creditcode] [nvarchar](1) NOT NULL,
 	[Creditdescription] [nvarchar](50) NULL,
-	[Rowid] [timestamp] NOT NULL
+	[Rowid] [timestamp] NOT NULL,
+	[Type] [int] NOT NULL,
+ CONSTRAINT [PK_CREDIT_LEVEL_334] PRIMARY KEY CLUSTERED
+(
+	[Creditcode] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
 SET ANSI_NULLS ON
@@ -2368,6 +1816,31 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE TABLE [ENDFRIST_79](
+	[Arendenr] [nvarchar](50) NOT NULL,
+	[Lopnr] [smallint] NOT NULL,
+	[Fristkod] [nvarchar](6) NOT NULL,
+	[Fhandlagg] [int] NULL,
+	[Belopp] [decimal](11, 2) NULL,
+	[Sidor] [nvarchar](4) NULL,
+	[Utfdag] [datetime] NULL,
+	[Frist] [datetime] NULL,
+	[Rapportsand] [datetime] NULL,
+	[Paminnelse] [datetime] NULL,
+	[Instrmottagen] [datetime] NULL,
+	[Instrsand] [datetime] NULL,
+	[Slutdag] [datetime] NULL,
+	[Svaromal] [datetime] NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Aktfrist_76_id] [int] NULL,
+	[Fritext] [ntext] NULL,
+	[Fritext2] [ntext] NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [EXCEL_COLUMN_HEADERS_163](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[Column_Id] [int] NOT NULL,
@@ -2432,7 +1905,7 @@ CREATE TABLE [FAKTKVITTENS_124](
 	[Ombudsnr] [nvarchar](7) NULL,
 	[Ombudsnamn] [nvarchar](50) NULL,
 	[Anvandare] [int] NULL,
-	[Fakturanr] [nvarchar](15) NULL,
+	[Fakturanr] [nvarchar](50) NULL,
 	[Tidstampel] [datetime] NULL,
 	[Typ] [smallint] NULL,
 	[Valutakod] [nvarchar](3) NULL,
@@ -2830,6 +2303,24 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE TABLE [FRIST_ARENDE_18](
+	[Avgiftskod] [smallint] NOT NULL,
+	[Arendenr] [nvarchar](50) NOT NULL,
+	[Frist] [datetime] NOT NULL,
+	[Fristmedstraff] [datetime] NOT NULL,
+	[Specialfristjn] [nvarchar](1) NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+ CONSTRAINT [PK_FRIST_ARENDE_18] PRIMARY KEY CLUSTERED
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [FRIST_ARENDE_BEHORIG_295](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[Frist_Id] [int] NOT NULL,
@@ -2841,6 +2332,44 @@ CREATE TABLE [FRIST_ARENDE_BEHORIG_295](
 (
 	[Id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [FRISTKOD_73](
+	[Fristkod] [nvarchar](15) NOT NULL,
+	[Extern] [nvarchar](1) NULL,
+	[Datumkod] [nvarchar](3) NULL,
+	[Klasskod] [nvarchar](1) NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Fhandlagg] [int] NULL,
+	[Onnew] [nvarchar](6) NULL,
+	[Onend] [nvarchar](6) NULL,
+	[Doublecheckonnew] [smallint] NULL,
+	[Useassistant] [smallint] NOT NULL,
+	[Doublecheckonend] [smallint] NULL,
+	[Showifattorney] [smallint] NOT NULL,
+	[Description] [ntext] NULL,
+	[Useattorney] [smallint] NOT NULL,
+	[Parent] [nvarchar](6) NULL,
+	[Reminderfrom] [int] NULL,
+	[Reminderoffsetmonths] [int] NULL,
+	[Reminderoffsetdays] [int] NULL,
+	[Importance] [int] NOT NULL,
+	[State] [int] NOT NULL
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [FRISTKODNAMN_167](
+	[Fristkod] [nvarchar](6) NOT NULL,
+	[Sprakkod] [nvarchar](1) NOT NULL,
+	[Fristkodnamn] [nvarchar](50) NULL,
+	[Rowid] [timestamp] NOT NULL
 ) ON [PRIMARY]
 GO
 SET ANSI_NULLS ON
@@ -3285,6 +2814,7 @@ CREATE TABLE [KONTAKT_130](
 	[Comment] [nvarchar](max) NULL,
 	[Meansofcommunication] [int] NULL,
 	[Rowid] [timestamp] NOT NULL,
+	[Extref] [nvarchar](50) NULL,
  CONSTRAINT [PK_KONTAKT_130] PRIMARY KEY CLUSTERED
 (
 	[Contactid] ASC
@@ -3491,7 +3021,7 @@ CREATE TABLE [KUND_DISCOUNT_270](
 	[DiscountGroup_Id] [int] NULL,
 	[Landkod] [nvarchar](2) NULL,
 	[Klasskod] [nvarchar](1) NULL,
-	[DiscountPercentage] [int] NULL,
+	[DiscountPercentage] [decimal](5, 2) NULL,
 	[FixedPrice] [decimal](11, 2) NULL,
 	[Rowid] [timestamp] NOT NULL,
 	[Type] [int] NOT NULL,
@@ -3822,7 +3352,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [PARAMETER_149](
 	[Sektion] [nvarchar](50) NOT NULL,
-	[Parameter] [nvarchar](50) NOT NULL,
+	[Parameter] [nvarchar](100) NOT NULL,
 	[Varde] [nvarchar](4000) NULL,
 	[Beskrivning] [nvarchar](512) NULL,
 	[Rowid] [timestamp] NOT NULL,
@@ -3880,12 +3410,52 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE TABLE [PENDING_TIME_335](
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[User_Id] [int] NOT NULL,
+	[Arendenr] [nvarchar](50) NULL,
+	[Kundnr] [nvarchar](7) NOT NULL,
+	[StartTimeUtc] [datetime2](7) NOT NULL,
+	[Minutes] [int] NOT NULL,
+	[Fakturatextnr] [smallint] NOT NULL,
+	[Text] [nvarchar](max) NULL,
+	[Imported] [datetime2](7) NULL,
+	[ImportStatus] [int] NOT NULL,
+	[Created] [datetime2](7) NOT NULL,
+ CONSTRAINT [PK_PENDING_TIME_335] PRIMARY KEY CLUSTERED
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [PRINTOUTS_170](
 	[Anvid] [int] NOT NULL,
 	[Printid] [nvarchar](50) NOT NULL,
 	[Paramindex] [int] NOT NULL,
 	[Paramvalue] [nvarchar](50) NULL,
 	[Datum] [datetime] NOT NULL
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [PRIOFRAN_LAND_48](
+	[Arendenr] [nvarchar](50) NOT NULL,
+	[Landkod] [nvarchar](2) NOT NULL,
+	[Prionr] [nvarchar](50) NOT NULL,
+	[Priofran_datum] [datetime] NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Designnr] [nvarchar](2) NULL,
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+ CONSTRAINT [PK_PRIOFRAN_LAND_48] PRIMARY KEY NONCLUSTERED
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
 SET ANSI_NULLS ON
@@ -4092,6 +3662,26 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE TABLE [REGFRIST_94](
+	[Arendenr] [nvarchar](50) NOT NULL,
+	[Regel] [nvarchar](10) NOT NULL,
+	[Vm] [nvarchar](1) NOT NULL,
+	[Frist] [datetime] NOT NULL,
+	[Friststraff] [datetime] NOT NULL,
+	[Period] [smallint] NULL,
+	[Lopno] [smallint] NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+ CONSTRAINT [PK_REGFRIST_94] PRIMARY KEY CLUSTERED
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [REGFRIST_BEHORIG_296](
 	[Id] [int] IDENTITY(1,1) NOT NULL,
 	[Frist_Id] [int] NOT NULL,
@@ -4155,11 +3745,27 @@ CREATE TABLE [REGPRIS_96](
 	[Landarvvalutakod2] [nvarchar](3) NULL,
 	[Prisl_regpris_102_Id] [int] NOT NULL,
 	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Klassoff2] [int] NOT NULL,
+	[Klassoff2From] [int] NULL,
+	[Ombklass2] [int] NOT NULL,
+	[Ombklass2From] [int] NULL,
  CONSTRAINT [PK_REGPRIS_96] PRIMARY KEY NONCLUSTERED
 (
 	[Id] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [REGREGEL_93](
+	[Regel] [nvarchar](10) NOT NULL,
+	[Vm] [nvarchar](1) NOT NULL,
+	[Regelnamn] [nvarchar](50) NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Sprakkod] [nvarchar](1) NOT NULL
+) ON [PRIMARY]
 GO
 SET ANSI_NULLS ON
 GO
@@ -5060,6 +4666,63 @@ SET ANSI_NULLS ON
 GO
 SET QUOTED_IDENTIFIER ON
 GO
+CREATE TABLE [UPPF_ARENDE_68](
+	[Arendenr] [nvarchar](50) NOT NULL,
+	[Uppfnr] [nvarchar](7) NOT NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Sortorder] [smallint] NULL,
+	[Kategori] [nvarchar](50) NULL,
+	[Id] [int] IDENTITY(1,1) NOT NULL,
+	[Share] [nvarchar](100) NULL,
+ CONSTRAINT [PK_UPPF_ARENDE_68] PRIMARY KEY CLUSTERED
+(
+	[Id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [UPPFINNARE_69](
+	[Uppfnr] [nvarchar](7) NOT NULL,
+	[Landkod] [nvarchar](2) NOT NULL,
+	[Uppfadress1] [nvarchar](100) NULL,
+	[Uppfadress2] [nvarchar](100) NULL,
+	[Uppfadress3] [nvarchar](100) NULL,
+	[Uppfadress4] [nvarchar](100) NULL,
+	[Uppfadress5] [nvarchar](100) NULL,
+	[Uppfkortnamn] [nvarchar](50) NOT NULL,
+	[Uppfkortort] [nvarchar](15) NULL,
+	[Uppfadress6] [nvarchar](100) NULL,
+	[Uppfadress7] [nvarchar](100) NULL,
+	[Hemort] [nvarchar](50) NULL,
+	[Nation] [nvarchar](50) NULL,
+	[Andratdat] [datetime] NULL,
+	[Anv] [int] NULL,
+	[Telefonnr] [nvarchar](50) NULL,
+	[Sprakkod] [nvarchar](1) NOT NULL,
+	[Rowid] [timestamp] NOT NULL,
+	[Rowguid] [uniqueidentifier] NOT NULL,
+	[Fritext] [ntext] NULL,
+	[Personnr] [nvarchar](15) NULL,
+	[Kategori] [nvarchar](50) NULL,
+	[Anstalld] [bit] NOT NULL,
+	[Transferconfigurationsetid] [int] NULL,
+	[Meansofcommunication] [int] NULL,
+	[EmailAddresses_To] [nvarchar](max) NULL,
+	[EmailAddresses_Cc] [nvarchar](max) NULL,
+	[EmailAddresses_Bcc] [nvarchar](max) NULL,
+ CONSTRAINT [PK_UPPFINNARE_69] PRIMARY KEY CLUSTERED
+(
+	[Uppfnr] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
 CREATE TABLE [UPPLYSGRUPP_87](
 	[Gruppkod] [nvarchar](2) NOT NULL,
 	[Upplysnamn] [nvarchar](25) NULL,
@@ -5878,7 +5541,7 @@ SET QUOTED_IDENTIFIER ON
 GO
 CREATE TABLE [ADDITIONAL_CASES_311](
 	[Docid] [int] NOT NULL,
-	[Caseno] [nvarchar](50) NULL
+	[Caseno] [nvarchar](50) NOT NULL
 ) ON [PRIMARY]
 GO
 SET ANSI_NULLS ON
@@ -6291,4 +5954,10 @@ CREATE TABLE [PRIORARTDOCUMENT_DOCUMENTS_292](
 	[Path] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON) ON [PRIMARY]
 ) ON [PRIMARY]
+GO
+ALTER TABLE [PENDING_TIME_335] ADD  CONSTRAINT [DF_PENDING_TIME_335_ImportStatus]  DEFAULT ((0)) FOR [ImportStatus]
+GO
+ALTER TABLE [PENDING_TIME_335] ADD  CONSTRAINT [DF_PENDING_TIME_335_Created]  DEFAULT (sysdatetime()) FOR [Created]
+GO
+ALTER TABLE [KUND_ARENDE_25] ADD  CONSTRAINT [DF_KUND_ARENDE_25_Useaddress]  DEFAULT ((0)) FOR [Useaddress]
 GO

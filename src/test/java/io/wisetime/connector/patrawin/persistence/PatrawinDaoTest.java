@@ -11,8 +11,11 @@ import com.google.inject.Guice;
 import com.google.inject.Injector;
 import com.google.inject.Provider;
 
+import com.github.javafaker.Faker;
+
 import org.codejargon.fluentjdbc.api.FluentJdbc;
 import org.codejargon.fluentjdbc.api.FluentJdbcBuilder;
+import org.codejargon.fluentjdbc.api.mapper.Mappers;
 import org.codejargon.fluentjdbc.api.query.Query;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
@@ -25,6 +28,7 @@ import org.testcontainers.containers.MSSQLServerContainer;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 
@@ -58,6 +62,7 @@ class PatrawinDaoTest {
   private static JdbcDatabaseContainer sqlServerContainer = new MSSQLServerContainer();
   private static FakeCaseClientGenerator fakeCaseClientGenerator = new FakeCaseClientGenerator();
   private static FakeTimeGroupGenerator fakeTimeGroupGenerator = new FakeTimeGroupGenerator();
+  private static Faker faker = new Faker();
 
   private static PatrawinDao patrawinDao;
   private static FluentJdbc fluentJdbc;
@@ -89,7 +94,12 @@ class PatrawinDaoTest {
         RuntimeConfig.getString(PATRAWIN_JDBC_URL).orElse("").equals(sqlServerContainer.getJdbcUrl())
     );
     Query query = fluentJdbc.query();
-    query.update("DELETE FROM ARENDE_1").run();
+    query.update("TRUNCATE TABLE ARENDE_1").run();
+    query.update("TRUNCATE TABLE KUND_24").run();
+    query.update("TRUNCATE TABLE BEHORIG_50").run();
+    query.update("TRUNCATE TABLE CREDIT_LEVEL_334").run();
+    query.update("TRUNCATE TABLE PENDING_TIME_335").run();
+    query.update("TRUNCATE TABLE CREDIT_LEVEL_334").run();
   }
 
   @AfterAll
@@ -107,9 +117,15 @@ class PatrawinDaoTest {
   @Test
   void doesUserExist() {
     final User user = fakeTimeGroupGenerator.randomUser();
-    assertThat(createUser(user))
-        .isTrue();
+
     assertThat(patrawinDao.doesUserExist(user.getEmail()))
+        .as("User not in DB")
+        .isFalse();
+
+    // Add user in DB
+    createUser(user);
+    assertThat(patrawinDao.doesUserExist(user.getEmail()))
+        .as("User is in DB")
         .isTrue();
   }
 
@@ -141,16 +157,70 @@ class PatrawinDaoTest {
   }
 
   @Test
-  void createWorklog() {
-    final Case aCase = fakeCaseClientGenerator.randomCase();
-    assertThat(createCase(aCase))
+  void createWorklog_client() {
+    final String creditCode = faker.letterify("?");
+    createCreditCode(creditCode, false);
+
+    final Client client = fakeCaseClientGenerator.randomClient();
+    assertThat(createClient(client, creditCode))
         .isNotNull();
 
     final User user = fakeTimeGroupGenerator.randomUser();
-    assertThat(createUser(user))
+    final long userId = createUser(user);
+
+    final int activityCode = faker.number().numberBetween(1, 5);
+    assertThat(createActivityCode(activityCode))
         .isTrue();
 
-    final int activityCode = 2;
+    final Worklog worklog = ImmutableWorklog.builder()
+        .caseOrClientNumber(client.clientNumber())
+        .usernameOrEmail(user.getExternalId())
+        .activityCode(activityCode)
+        .narrative(faker.shakespeare().asYouLikeItQuote())
+        .startTime(OffsetDateTime.now(ZoneOffset.UTC))
+        .durationSeconds(2 * 60 * 60)
+        .chargeableTimeSeconds(2 * 60 * 60)
+        .build();
+    final int status = patrawinDao.createWorklog(worklog);
+
+    assertThat(status)
+        .as("should not return 'Success' status")
+        .isEqualTo(0);
+
+    final PendingTime pendingTime = getCreatedPendingTime(client.clientNumber());
+    assertThat(pendingTime.getUserId())
+        .as("the user id of the provided username or email")
+        .isEqualTo(userId);
+    assertThat(pendingTime.getClientNum())
+        .as("should use client number")
+        .isEqualTo(worklog.getCaseOrClientNumber());
+    assertThat(pendingTime.getCaseNum())
+        .as("blank because no client number is provided")
+        .isBlank();
+    assertThat(timeDbFormatter.parseOffsetDateTime(pendingTime.getStartTimeUtc() + " Z"))
+        .as("should used correct start time in UTC")
+        .isEqualTo(worklog.getStartTime());
+    assertThat(pendingTime.getMinutes())
+        .as("should correctly convert duration in seconds to minutes")
+        .isEqualTo(worklog.getDurationSeconds() / 60);
+    assertThat(pendingTime.getServiceNum())
+        .as("should be equal to the activity code")
+        .isEqualTo(worklog.getActivityCode());
+    assertThat(pendingTime.getNarrative())
+        .as("should used correct narrative")
+        .isEqualTo(worklog.getNarrative());
+  }
+
+  @Test
+  void createWorklog_case() {
+    final Case aCase = fakeCaseClientGenerator.randomCase();
+    final Client client = fakeCaseClientGenerator.randomClient();
+    createCaseWithClient(aCase, client);
+
+    final User user = fakeTimeGroupGenerator.randomUser();
+    final long userId = createUser(user);
+
+    final int activityCode = faker.number().numberBetween(1, 5);
     assertThat(createActivityCode(activityCode))
         .isTrue();
 
@@ -158,22 +228,48 @@ class PatrawinDaoTest {
         .caseOrClientNumber(aCase.getCaseNumber())
         .usernameOrEmail(user.getExternalId())
         .activityCode(activityCode)
-        .narrative("")
-        .startTime(OffsetDateTime.now().minus(10, ChronoUnit.HOURS))
+        .narrative(faker.shakespeare().asYouLikeItQuote())
+        .startTime(OffsetDateTime.now(ZoneOffset.UTC))
         .durationSeconds(2 * 60 * 60)
         .chargeableTimeSeconds(2 * 60 * 60)
         .build();
-    // TODO: assert against the result
-    // patrawinDao.createWorklog(worklog);
+    final int status = patrawinDao.createWorklog(worklog);
+
+    assertThat(status)
+        .as("should not return 'Success' status")
+        .isEqualTo(0);
+
+    final PendingTime pendingTime = getCreatedPendingTime(client.clientNumber());
+    assertThat(pendingTime.getUserId())
+        .as("the user id of the provided username or email")
+        .isEqualTo(userId);
+    assertThat(pendingTime.getCaseNum())
+        .as("should use specified case number")
+        .isEqualTo(worklog.getCaseOrClientNumber());
+    assertThat(pendingTime.getClientNum())
+        .as("should use client number associated to the case")
+        .isEqualTo(client.clientNumber());
+    assertThat(timeDbFormatter.parseOffsetDateTime(pendingTime.getStartTimeUtc() + " Z"))
+        .as("should used correct start time in UTC")
+        .isEqualTo(worklog.getStartTime());
+    assertThat(pendingTime.getMinutes())
+        .as("should correctly convert duration in seconds to minutes")
+        .isEqualTo(worklog.getDurationSeconds() / 60);
+    assertThat(pendingTime.getServiceNum())
+        .as("should be equal to the activity code")
+        .isEqualTo(worklog.getActivityCode());
+    assertThat(pendingTime.getNarrative())
+        .as("should used correct narrative")
+        .isEqualTo(worklog.getNarrative());
   }
 
   @Test
   void findCasesOrderedByCreationTime() {
-    cleanCasesTable();
-
     final LocalDateTime now = LocalDateTime.now();
-    final Case createdNow1 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withCaseNumber("B1234"));
-    final Case createdNow2 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withCaseNumber("A1234"));
+    final Case createdNow1 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now))
+        .withCaseNumber("B1234"));
+    final Case createdNow2 = createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now))
+        .withCaseNumber("A1234"));
     final Case createdYesterday = createCase(fakeCaseClientGenerator.randomCase(now.minus(1, ChronoUnit.DAYS)));
     final Case createdLastWeek = createCase(fakeCaseClientGenerator.randomCase(now.minus(7, ChronoUnit.DAYS)));
     final Case createdLast2Weeks = createCase(fakeCaseClientGenerator.randomCase(now.minus(14, ChronoUnit.DAYS)));
@@ -202,8 +298,6 @@ class PatrawinDaoTest {
 
   @Test
   void findClientsOrderedByCreationTime() {
-    cleanClientsTable();
-
     final LocalDateTime now = LocalDateTime.now();
     final Client createdNow1 = createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now))
         .withClientNumber("123"));
@@ -242,7 +336,7 @@ class PatrawinDaoTest {
         .isTrue();
   }
 
-  private boolean createUser(User patrawinUser) {
+  private long createUser(User patrawinUser) {
     return fluentJdbc.query()
         .update("INSERT INTO BEHORIG_50 (Username, Email, Namn, Officeid, Isactive, Isattorney) " +
             "VALUES (?, ?, ?, 1, 1, 1)")
@@ -250,23 +344,22 @@ class PatrawinDaoTest {
             patrawinUser.getExternalId(),
             patrawinUser.getEmail(),
             patrawinUser.getName())
-        .run()
-        .affectedRows() == 1;
+        .runFetchGenKeys(Mappers.singleLong())
+        .generatedKeys()
+        .get(0);
   }
 
   private boolean createActivityCode(int activityCode) {
-    return fluentJdbc.query()
-        .update("INSERT INTO FAKTURATEXTNR_15 (Fakturatextnr, AmountIncludedInStatistics, HoursIncludedInStatistics) " +
-            "VALUES (?, 1, 1)")
-        .params(activityCode)
-        .run()
-        .affectedRows() == 1;
+    return createActivityCode(activityCode, true);
   }
 
-  private void cleanCasesTable() {
-    fluentJdbc.query()
-        .update("TRUNCATE TABLE ARENDE_1")
-        .run();
+  private boolean createActivityCode(int activityCode, boolean active) {
+    return fluentJdbc.query()
+        .update("INSERT INTO FAKTURATEXTNR_15 (Fakturatextnr, AmountIncludedInStatistics, " +
+            "HoursIncludedInStatistics, Inaktiv) VALUES (?, 1, 1, ?)")
+        .params(activityCode, active ? 0 : 1)
+        .run()
+        .affectedRows() == 1;
   }
 
   private Case createCase(Case patrawinCase) {
@@ -292,22 +385,21 @@ class PatrawinDaoTest {
             .build());
   }
 
-  private void cleanClientsTable() {
-    fluentJdbc.query()
-        .update("TRUNCATE TABLE KUND_24")
-        .run();
+  private Client createClient(Client client) {
+    return createClient(client, faker.letterify("?"));
   }
 
-  private Client createClient(Client client) {
+  private Client createClient(Client client, String creditCode) {
     fluentJdbc.query()
         .update("INSERT INTO KUND_24 " +
             "(Kundnr, Kortnamnkund, Skapatdat, Valutakod, Landkod, Sprakkod, Rowguid, Einvoicetype, Xmlinvoicetypeid, " +
-            "Einvoiceaccent, Enableipforecaster, Automatfakturajn, Usebasicoutsourcingsurcharge, IsAgentInFile) " +
-            "VALUES (?, ?, ?, 'N', 'N', 'N', NEWID(), 0, 0, 0, 0, 'N', 0, 0)")
+            "Einvoiceaccent, Enableipforecaster, Automatfakturajn, Usebasicoutsourcingsurcharge, IsAgentInFile, Kreditjn) " +
+            "VALUES (?, ?, ?, 'N', 'N', 'N', NEWID(), 0, 0, 0, 0, 'N', 0, 0, ?)")
         .params(
             client.clientNumber(),
             client.getAlias(),
-            timeDbFormatter.format(client.getCreationTime()))
+            timeDbFormatter.format(client.getCreationTime()),
+            creditCode)
         .run();
 
     // MSSQL's DATETIME are rounded to increments of .000, .003 or .007 seconds
@@ -321,6 +413,46 @@ class PatrawinDaoTest {
             .alias(rs.getString(2))
             .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
             .build());
+  }
+
+  private void createCreditCode(String creditCode, boolean blocked) {
+    final int creditCodeType = blocked ? 2 : 0; // 2 means blocked
+
+    // Set credit code of client as blocked
+    fluentJdbc.query()
+        .update("INSERT INTO CREDIT_LEVEL_334 (Creditcode, Type) VALUES (?, ?)")
+        .params(creditCode, creditCodeType)
+        .run();
+  }
+
+  private void createCaseWithClient(Case patrawinCase, Client client) {
+    final String creditCode = faker.letterify("?");
+    createCreditCode(creditCode, false);
+
+    createCase(patrawinCase);
+    createClient(client, creditCode);
+
+    fluentJdbc.query()
+        .update("INSERT INTO KUND_ARENDE_25 (Arendenr, Kundnr, Part, Kundtyp) VALUES (?, ?, 1, 2)")
+        .params(patrawinCase.getCaseNumber(), client.clientNumber())
+        .run();
+  }
+
+  private PendingTime getCreatedPendingTime(String clientNumber) {
+    return fluentJdbc.query()
+        .select("SELECT User_Id, Arendenr, Kundnr, StartTimeUtc, Minutes, Fakturatextnr, Text FROM PENDING_TIME_335 " +
+            "WHERE Kundnr = ?")
+        .params(clientNumber)
+        .singleResult(rs ->
+            new PendingTime()
+                .setUserId(rs.getLong("User_Id"))
+                .setCaseNum(rs.getString("Arendenr"))
+                .setClientNum(rs.getString("Kundnr"))
+                .setStartTimeUtc(rs.getString("StartTimeUtc"))
+                .setMinutes(rs.getInt("Minutes"))
+                .setServiceNum(rs.getInt("Fakturatextnr"))
+                .setNarrative(rs.getString("Text"))
+        );
   }
 
   /**
@@ -347,6 +479,79 @@ class PatrawinDaoTest {
         flyway.setLocations("sql/");
         return flyway;
       }
+    }
+  }
+
+  public class PendingTime {
+    long userId;
+    String caseNum;
+    String clientNum;
+    String startTimeUtc;
+    int minutes;
+    int serviceNum;
+    String narrative;
+
+    long getUserId() {
+      return userId;
+    }
+
+    PendingTime setUserId(long userId) {
+      this.userId = userId;
+      return this;
+    }
+
+    String getCaseNum() {
+      return caseNum;
+    }
+
+    PendingTime setCaseNum(String caseNum) {
+      this.caseNum = caseNum;
+      return this;
+    }
+
+    String getClientNum() {
+      return clientNum;
+    }
+
+    PendingTime setClientNum(String clientNum) {
+      this.clientNum = clientNum;
+      return this;
+    }
+
+    String getStartTimeUtc() {
+      return startTimeUtc;
+    }
+
+    PendingTime setStartTimeUtc(String startTimeUtc) {
+      this.startTimeUtc = startTimeUtc;
+      return this;
+    }
+
+    int getMinutes() {
+      return minutes;
+    }
+
+    PendingTime setMinutes(int minutes) {
+      this.minutes = minutes;
+      return this;
+    }
+
+    int getServiceNum() {
+      return serviceNum;
+    }
+
+    PendingTime setServiceNum(int serviceNum) {
+      this.serviceNum = serviceNum;
+      return this;
+    }
+
+    String getNarrative() {
+      return narrative;
+    }
+
+    PendingTime setNarrative(String narrative) {
+      this.narrative = narrative;
+      return this;
     }
   }
 }
