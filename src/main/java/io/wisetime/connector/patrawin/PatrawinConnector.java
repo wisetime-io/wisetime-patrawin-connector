@@ -201,6 +201,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     final String authorUsernameOrEmail = StringUtils.isEmpty(timeGroup.getUser().getExternalId()) ?
         timeGroup.getUser().getEmail() :
         timeGroup.getUser().getExternalId();
+    // TODO: Should we delete this? The stored proc already does the exact validation
     if (!patrawinDao.doesUserExist(authorUsernameOrEmail)) {
       return PostResult.PERMANENT_FAILURE.withMessage("User does not exist in Patrawin");
     }
@@ -220,6 +221,7 @@ public class PatrawinConnector implements WiseTimeConnector {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid format of the activity code " + modifier);
     }
 
+    // TODO: Should we delete this? The stored proc has validation for this
     if (!patrawinDao.doesActivityCodeExist(activityCode)) {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid activity code " + modifier);
     }
@@ -278,6 +280,11 @@ public class PatrawinConnector implements WiseTimeConnector {
     return PostResult.SUCCESS;
   }
 
+  /**
+   * Determines if the tag is an existing case or client in Patrawin.
+   * Note that even a case or client is existing, the stored procedure `pw_PostTime` for posting time has additional
+   * checks if posting time to this case or client can proceed.
+   */
   private final Function<Tag, Optional<String>> findCaseOrClientNumber = tag -> {
     final String id = tag.getName();
     if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
