@@ -176,7 +176,7 @@ public class PatrawinDao {
   }
 
   /**
-   * The parameters for post_time are as follows:
+   * The parameters for pw_PostTime are as follows:
    *
    * @case_or_client_id nvarchar
    * @username_or_email nvarchar
@@ -189,8 +189,8 @@ public class PatrawinDao {
    *
    * Return codes: SUCCESS, CASE_OR_CLIENT_ID_NOT_FOUND, USER_NOT_FOUND, ACTIVITY_CODE_NOT_FOUND
    */
-  public int createWorklog(Worklog worklog) {
-    return query().plainConnection(con -> {
+  public void createWorklog(Worklog worklog) {
+    final int status = query().plainConnection(con -> {
       try (CallableStatement cs = con.prepareCall("{ ? = call pw_PostTime(?, ?, ?, ?, ?, ?, ?, ?) }")) {
         cs.registerOutParameter(1, Types.INTEGER);
         cs.setString(2, worklog.getCaseOrClientNumber());
@@ -207,6 +207,9 @@ public class PatrawinDao {
         throw new RuntimeException(ex);
       }
     });
+
+    // this will throw IllegalStateException if posting time is not successful.
+    verifyPostingTimeIsSuccessful(status);
   }
 
   public boolean canQueryDb() {
@@ -250,6 +253,24 @@ public class PatrawinDao {
         .allMatch(entry -> actualTablesAndColumnsMap.containsKey(entry.getKey()) &&
             actualTablesAndColumnsMap.get(entry.getKey()).containsAll(entry.getValue())
         );
+  }
+
+  private void verifyPostingTimeIsSuccessful(int status) {
+    switch (status) {
+      case 0:
+        // Throw nothing
+        return;
+      case 1:
+        throw new IllegalStateException("Case or client not found");
+      case 2:
+        throw new IllegalStateException("Client is blocked");
+      case 3:
+        throw new IllegalStateException("User not found or inactive");
+      case 4:
+        throw new IllegalStateException("Activity code not found or inactive");
+      default:
+        throw new RuntimeException("Unknown status code received for calling `pw_PostTime`");
+    }
   }
 
   private Query query() {

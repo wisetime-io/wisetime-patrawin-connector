@@ -264,6 +264,11 @@ public class PatrawinConnector implements WiseTimeConnector {
                       caseOrClientNumber, authorUsernameOrEmail)
               )
       );
+    } catch (IllegalStateException ex) {
+      // thrown if Patrawin has rejected the posted time
+      return PostResult.PERMANENT_FAILURE
+          .withError(ex)
+          .withMessage(ex.getMessage());
     } catch (RuntimeException e) {
       log.error(e.getMessage(), e);
       return PostResult.TRANSIENT_FAILURE

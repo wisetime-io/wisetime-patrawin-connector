@@ -181,11 +181,8 @@ class PatrawinDaoTest {
         .durationSeconds(2 * 60 * 60)
         .chargeableTimeSeconds(2 * 60 * 60)
         .build();
-    final int status = patrawinDao.createWorklog(worklog);
 
-    assertThat(status)
-        .as("should not return 'Success' status")
-        .isEqualTo(0);
+    patrawinDao.createWorklog(worklog);
 
     final PendingTime pendingTime = getCreatedPendingTime(client.clientNumber());
     assertThat(pendingTime.getUserId())
@@ -233,11 +230,8 @@ class PatrawinDaoTest {
         .durationSeconds(2 * 60 * 60)
         .chargeableTimeSeconds(2 * 60 * 60)
         .build();
-    final int status = patrawinDao.createWorklog(worklog);
 
-    assertThat(status)
-        .as("should not return 'Success' status")
-        .isEqualTo(0);
+    patrawinDao.createWorklog(worklog);
 
     final PendingTime pendingTime = getCreatedPendingTime(client.clientNumber());
     assertThat(pendingTime.getUserId())
