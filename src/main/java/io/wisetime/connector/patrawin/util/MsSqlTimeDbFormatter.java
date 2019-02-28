@@ -25,7 +25,7 @@ public final class MsSqlTimeDbFormatter implements TimeDbFormatter {
       .appendFraction(ChronoField.MICRO_OF_SECOND, 0, 3, true)
       .toFormatter();
 
-  // DateTime formatter builder for pattern `"yyyy-MM-dd HH:mm:ss.SSSSSSS XXX`
+  // DateTime formatter builder for pattern `"yyyy-MM-dd HH:mm:ss.nnnnnnn XXX`
   // See https://docs.microsoft.com/en-us/sql/t-sql/data-types/datetimeoffset-transact-sql?view=sql-server-2017
   private static final DateTimeFormatter MSSQL_DATE_TIME_OFFSET_FORMATTER = new DateTimeFormatterBuilder()
       .appendPattern("yyyy-MM-dd HH:mm:ss")
