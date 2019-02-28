@@ -21,7 +21,7 @@ import static org.mockito.Mockito.mock;
  * @author shane.xie@practiceinsight.io
  * @author galya.bogdanova@m.practiceinsight.io
  */
-public class PatrawinConnectorUtilsTest {
+class PatrawinConnectorUtilsTest {
 
   @Test
   void createSyncStore_creates_new_instance() {

@@ -50,7 +50,7 @@ import static org.mockito.Mockito.when;
  * @author shane.xie@practiceinsight.io
  * @author galya.bogdanova@m.practiceinsight.io
  */
-public class PatrawinConnectorPerformTagUpdateTest {
+class PatrawinConnectorPerformTagUpdateTest {
 
   private static final String TAG_UPSERT_PATH = "/test/path/";
 
@@ -64,6 +64,7 @@ public class PatrawinConnectorPerformTagUpdateTest {
   @BeforeAll
   static void setUp() {
     RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_PATH, TAG_UPSERT_PATH);
+    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, "123456");
 
     Injector injector = Guice.createInjector(binder -> {
       binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao);
