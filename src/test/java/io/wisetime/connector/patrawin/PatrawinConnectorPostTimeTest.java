@@ -51,7 +51,7 @@ import static org.mockito.Mockito.when;
  * @author shane.xie@practiceinsight.io
  * @author galya.bogdanova@m.practiceinsight.io
  */
-public class PatrawinConnectorPostTimeTest {
+class PatrawinConnectorPostTimeTest {
 
   private static final String DEFAULT_MODIFIER = "123456";
 
@@ -401,5 +401,24 @@ public class PatrawinConnectorPostTimeTest {
     final int expectedChargeableTimeSeconds = 400;
     assertThat(worklogCaptor.getValue().getChargeableTimeSeconds())
         .isEqualTo(expectedChargeableTimeSeconds);
+  }
+
+  @Test
+  void postTime_post_time_not_successful() {
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .totalDurationSecs(1000)
+        .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
+        .tags(ImmutableList.of(fakeGenerator.randomTag()));
+    doThrow(new IllegalStateException("Detailed error message why posting time failed"))
+        .when(patrawinDao).createWorklog(any());
+
+    final PostResult result = connector.postTime(mock(Request.class), timeGroup);
+
+    assertThat(result)
+        .as("should return permanent failure if Patrawin rejected the posted time")
+        .isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(result.getMessage())
+        .as("reason for failure should be the msg of the IllegalStateException")
+        .contains("Detailed error message why posting time failed");
   }
 }

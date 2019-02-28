@@ -17,4 +17,6 @@ public interface TimeDbFormatter {
   String format(OffsetDateTime offsetDateTime);
 
   LocalDateTime parseDateTime(String msqlDateTime);
+
+  OffsetDateTime parseOffsetDateTime(String offsetDateTime);
 }

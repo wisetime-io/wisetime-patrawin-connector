@@ -151,7 +151,8 @@ public class PatrawinConnector implements WiseTimeConnector {
         tagUpsertBatchSize());
 
     if (clients.isEmpty()) {
-      log.info("No new client tags found. Last client ID previously synced: {}", printLast(lastPreviouslySyncedClientNumbers));
+      log.info("No new client tags found. Last client ID previously synced: {}",
+          printLast(lastPreviouslySyncedClientNumbers));
       return false;
     } else {
       try {
@@ -200,6 +201,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     final String authorUsernameOrEmail = StringUtils.isEmpty(timeGroup.getUser().getExternalId()) ?
         timeGroup.getUser().getEmail() :
         timeGroup.getUser().getExternalId();
+    // The Patrawin post time stored procedure also performs this validation
     if (!patrawinDao.doesUserExist(authorUsernameOrEmail)) {
       return PostResult.PERMANENT_FAILURE.withMessage("User does not exist in Patrawin");
     }
@@ -219,6 +221,7 @@ public class PatrawinConnector implements WiseTimeConnector {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid format of the activity code " + modifier);
     }
 
+    // The Patrawin post time stored procedure also performs this validation
     if (!patrawinDao.doesActivityCodeExist(activityCode)) {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid activity code " + modifier);
     }
@@ -234,8 +237,6 @@ public class PatrawinConnector implements WiseTimeConnector {
         .calculate()
         .getPerTagDuration());
 
-    final OffsetDateTime activityStartTimeOffset = activityStartTime.get().atOffset(ZoneOffset.ofHours(0));
-
     final Function<String, String> createWorklog = caseOrClientNumber -> {
       final ImmutableWorklog worklog = ImmutableWorklog
           .builder()
@@ -243,7 +244,7 @@ public class PatrawinConnector implements WiseTimeConnector {
           .usernameOrEmail(authorUsernameOrEmail)
           .activityCode(activityCode)
           .narrative(narrative)
-          .startTime(activityStartTimeOffset)
+          .startTime(OffsetDateTime.of(activityStartTime.get(), ZoneOffset.UTC))
           .durationSeconds(workedTimeSeconds)
           .chargeableTimeSeconds(chargeableTimeSeconds)
           .build();
@@ -261,9 +262,15 @@ public class PatrawinConnector implements WiseTimeConnector {
               .map(Optional::get)
               .map(createWorklog)
               .forEach(caseOrClientNumber ->
-                  log.info("Posted time to Patrawin case / client {} on behalf of {}", caseOrClientNumber, authorUsernameOrEmail)
+                  log.info("Posted time to Patrawin case / client {} on behalf of {}",
+                      caseOrClientNumber, authorUsernameOrEmail)
               )
       );
+    } catch (IllegalStateException ex) {
+      // Thrown if Patrawin has rejected the posted time
+      return PostResult.PERMANENT_FAILURE
+          .withError(ex)
+          .withMessage(ex.getMessage());
     } catch (RuntimeException e) {
       log.error(e.getMessage(), e);
       return PostResult.TRANSIENT_FAILURE
@@ -273,6 +280,11 @@ public class PatrawinConnector implements WiseTimeConnector {
     return PostResult.SUCCESS;
   }
 
+  /**
+   * Determines if the tag is an existing case or client in Patrawin.
+   * Note that even a case or client is existing, the stored procedure `pw_PostTime` for posting time has additional
+   * checks if posting time to this case or client can proceed.
+   */
   private final Function<Tag, Optional<String>> findCaseOrClientNumber = tag -> {
     final String id = tag.getName();
     if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
