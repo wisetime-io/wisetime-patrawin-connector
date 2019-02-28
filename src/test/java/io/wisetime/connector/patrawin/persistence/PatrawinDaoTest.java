@@ -5,6 +5,7 @@
 package io.wisetime.connector.patrawin.persistence;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
@@ -19,6 +20,7 @@ import org.codejargon.fluentjdbc.api.mapper.Mappers;
 import org.codejargon.fluentjdbc.api.query.Query;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
+import org.immutables.value.Value;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -438,14 +440,15 @@ class PatrawinDaoTest {
             "WHERE Kundnr = ?")
         .params(clientNumber)
         .singleResult(rs ->
-            new PendingTime()
-                .setUserId(rs.getLong("User_Id"))
-                .setCaseNum(rs.getString("Arendenr"))
-                .setClientNum(rs.getString("Kundnr"))
-                .setStartTimeUtc(rs.getString("StartTimeUtc"))
-                .setMinutes(rs.getInt("Minutes"))
-                .setServiceNum(rs.getInt("Fakturatextnr"))
-                .setNarrative(rs.getString("Text"))
+            ImmutablePendingTime.builder()
+                .userId(rs.getLong("User_Id"))
+                .caseNum(Strings.nullToEmpty(rs.getString("Arendenr")))
+                .clientNum(rs.getString("Kundnr"))
+                .startTimeUtc(rs.getString("StartTimeUtc"))
+                .minutes(rs.getInt("Minutes"))
+                .serviceNum(rs.getInt("Fakturatextnr"))
+                .narrative(rs.getString("Text"))
+            .build()
         );
   }
 
@@ -476,76 +479,20 @@ class PatrawinDaoTest {
     }
   }
 
-  public class PendingTime {
-    long userId;
-    String caseNum;
-    String clientNum;
-    String startTimeUtc;
-    int minutes;
-    int serviceNum;
-    String narrative;
+  @Value.Immutable
+  public interface PendingTime {
+    long getUserId();
 
-    long getUserId() {
-      return userId;
-    }
+    String getCaseNum();
 
-    PendingTime setUserId(long userId) {
-      this.userId = userId;
-      return this;
-    }
+    String getClientNum();
 
-    String getCaseNum() {
-      return caseNum;
-    }
+    String getStartTimeUtc();
 
-    PendingTime setCaseNum(String caseNum) {
-      this.caseNum = caseNum;
-      return this;
-    }
+    int getMinutes();
 
-    String getClientNum() {
-      return clientNum;
-    }
+    int getServiceNum();
 
-    PendingTime setClientNum(String clientNum) {
-      this.clientNum = clientNum;
-      return this;
-    }
-
-    String getStartTimeUtc() {
-      return startTimeUtc;
-    }
-
-    PendingTime setStartTimeUtc(String startTimeUtc) {
-      this.startTimeUtc = startTimeUtc;
-      return this;
-    }
-
-    int getMinutes() {
-      return minutes;
-    }
-
-    PendingTime setMinutes(int minutes) {
-      this.minutes = minutes;
-      return this;
-    }
-
-    int getServiceNum() {
-      return serviceNum;
-    }
-
-    PendingTime setServiceNum(int serviceNum) {
-      this.serviceNum = serviceNum;
-      return this;
-    }
-
-    String getNarrative() {
-      return narrative;
-    }
-
-    PendingTime setNarrative(String narrative) {
-      this.narrative = narrative;
-      return this;
-    }
+    String getNarrative();
   }
 }
