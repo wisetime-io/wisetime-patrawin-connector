@@ -190,7 +190,7 @@ public class PatrawinDao {
    * Return codes: SUCCESS, CASE_OR_CLIENT_ID_NOT_FOUND, USER_NOT_FOUND, ACTIVITY_CODE_NOT_FOUND
    */
   public void createWorklog(Worklog worklog) {
-    final int status = query().plainConnection(con -> {
+    final int recordIdOrFailureStatus = query().plainConnection(con -> {
       try (CallableStatement cs = con.prepareCall("{ ? = call pw_PostTime(?, ?, ?, ?, ?, ?, ?, ?) }")) {
         cs.registerOutParameter(1, Types.INTEGER);
         cs.setString(2, worklog.getCaseOrClientNumber());
@@ -209,7 +209,7 @@ public class PatrawinDao {
     });
 
     // this will throw IllegalStateException if posting time is not successful.
-    verifyPostingTimeIsSuccessful(status);
+    verifyPostingTimeIsSuccessful(recordIdOrFailureStatus);
   }
 
   public boolean canQueryDb() {
@@ -255,18 +255,20 @@ public class PatrawinDao {
         );
   }
 
-  private void verifyPostingTimeIsSuccessful(int status) {
-    switch (status) {
-      case 0:
-        // Success
-        return;
-      case 1:
+  private void verifyPostingTimeIsSuccessful(int recordIdOrFailureStatus) {
+    if (recordIdOrFailureStatus > 0) {
+      // A record ID is generated, which means posting time is successful
+      return;
+    }
+
+    switch (recordIdOrFailureStatus) {
+      case -1:
         throw new IllegalStateException("Case or client not found");
-      case 2:
+      case -2:
         throw new IllegalStateException("Client is blocked");
-      case 3:
+      case -3:
         throw new IllegalStateException("User not found or inactive");
-      case 4:
+      case -4:
         throw new IllegalStateException("Activity code not found or inactive");
       default:
         throw new RuntimeException("Unknown status code returned when calling `pw_PostTime`");
