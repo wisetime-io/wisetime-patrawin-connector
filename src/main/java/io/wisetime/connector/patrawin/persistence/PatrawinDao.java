@@ -258,7 +258,7 @@ public class PatrawinDao {
   private void verifyPostingTimeIsSuccessful(int status) {
     switch (status) {
       case 0:
-        // Throw nothing
+        // Success
         return;
       case 1:
         throw new IllegalStateException("Case or client not found");
@@ -269,12 +269,11 @@ public class PatrawinDao {
       case 4:
         throw new IllegalStateException("Activity code not found or inactive");
       default:
-        throw new RuntimeException("Unknown status code received for calling `pw_PostTime`");
+        throw new RuntimeException("Unknown status code returned when calling `pw_PostTime`");
     }
   }
 
   private Query query() {
     return fluentJdbc.query();
   }
-
 }

@@ -201,7 +201,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     final String authorUsernameOrEmail = StringUtils.isEmpty(timeGroup.getUser().getExternalId()) ?
         timeGroup.getUser().getEmail() :
         timeGroup.getUser().getExternalId();
-    // TODO: Should we delete this? The stored proc already does the exact validation
+    // The Patrawin post time stored procedure also performs this validation
     if (!patrawinDao.doesUserExist(authorUsernameOrEmail)) {
       return PostResult.PERMANENT_FAILURE.withMessage("User does not exist in Patrawin");
     }
@@ -221,7 +221,7 @@ public class PatrawinConnector implements WiseTimeConnector {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid format of the activity code " + modifier);
     }
 
-    // TODO: Should we delete this? The stored proc has validation for this
+    // The Patrawin post time stored procedure also performs this validation
     if (!patrawinDao.doesActivityCodeExist(activityCode)) {
       return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid activity code " + modifier);
     }
@@ -267,7 +267,7 @@ public class PatrawinConnector implements WiseTimeConnector {
               )
       );
     } catch (IllegalStateException ex) {
-      // thrown if Patrawin has rejected the posted time
+      // Thrown if Patrawin has rejected the posted time
       return PostResult.PERMANENT_FAILURE
           .withError(ex)
           .withMessage(ex.getMessage());
