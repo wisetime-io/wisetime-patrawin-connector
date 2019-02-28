@@ -31,6 +31,8 @@ import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.generated.connect.Tag;
 import io.wisetime.generated.connect.TimeGroup;
+import io.wisetime.generated.connect.TimeRow;
+import io.wisetime.generated.connect.User;
 import spark.Request;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -55,8 +57,8 @@ class PatrawinConnectorPostTimeTest {
 
   private static final String DEFAULT_MODIFIER = "123456";
 
-  private static PatrawinDao patrawinDao = mock(PatrawinDao.class);
-  private static ApiClient apiClient = mock(ApiClient.class);
+  private static PatrawinDao patrawinDaoMock = mock(PatrawinDao.class);
+  private static ApiClient apiClientMock = mock(ApiClient.class);
 
   private static PatrawinConnector connector;
   private static FakeTimeGroupGenerator fakeGenerator = new FakeTimeGroupGenerator();
@@ -64,7 +66,7 @@ class PatrawinConnectorPostTimeTest {
   @BeforeAll
   static void setUp() {
     Injector injector = Guice.createInjector(binder -> {
-      binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao);
+      binder.bind(PatrawinDao.class).toProvider(() -> patrawinDaoMock);
       binder.bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
     });
     connector = injector.getInstance(PatrawinConnector.class);
@@ -72,29 +74,29 @@ class PatrawinConnectorPostTimeTest {
     RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, DEFAULT_MODIFIER);
 
     // Ensure PatrawinConnector#init will not fail
-    doReturn(true).when(patrawinDao).hasExpectedSchema();
+    doReturn(true).when(patrawinDaoMock).hasExpectedSchema();
 
-    connector.init(new ConnectorModule(apiClient, mock(ConnectorStore.class)));
+    connector.init(new ConnectorModule(apiClientMock, mock(ConnectorStore.class)));
   }
 
   @BeforeEach
   void setUpTest() {
     RuntimeConfig.clearProperty(ConnectorConfigKey.CALLER_KEY);
 
-    reset(patrawinDao);
+    reset(patrawinDaoMock);
 
-    when(patrawinDao.doesUserExist(anyString()))
+    when(patrawinDaoMock.doesUserExist(anyString()))
         .thenReturn(true);
-    when(patrawinDao.doesActivityCodeExist(anyInt()))
+    when(patrawinDaoMock.doesActivityCodeExist(anyInt()))
         .thenReturn(true);
-    when(patrawinDao.doesCaseExist(anyString()))
+    when(patrawinDaoMock.doesCaseExist(anyString()))
         .thenReturn(true);
 
     // Ensure that code in the transaction lambda gets exercised
     doAnswer(invocation -> {
       invocation.<Runnable>getArgument(0).run();
       return null;
-    }).when(patrawinDao).asTransaction(any(Runnable.class));
+    }).when(patrawinDaoMock).asTransaction(any(Runnable.class));
   }
 
   @Test
@@ -109,7 +111,7 @@ class PatrawinConnectorPostTimeTest {
     assertThat(connector.postTime(mock(Request.class), groupWithNoTags))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
@@ -119,7 +121,7 @@ class PatrawinConnectorPostTimeTest {
     assertThat(connector.postTime(mock(Request.class), groupWithNoTags))
         .isEqualTo(PostResult.SUCCESS);
 
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
@@ -129,21 +131,21 @@ class PatrawinConnectorPostTimeTest {
     assertThat(connector.postTime(mock(Request.class), groupWithNoTimeRows))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
   void postTime_nonexistent_author_should_fail() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
 
-    when(patrawinDao.doesUserExist(anyString()))
+    when(patrawinDaoMock.doesUserExist(anyString()))
         .thenReturn(false);
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verify(patrawinDao, times(1)).doesUserExist(anyString());
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+    verify(patrawinDaoMock, times(1)).doesUserExist(anyString());
+    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
@@ -153,7 +155,7 @@ class PatrawinConnectorPostTimeTest {
     );
 
     ArgumentCaptor<String> userIdentityCaptor = ArgumentCaptor.forClass(String.class);
-    when(patrawinDao.doesUserExist(userIdentityCaptor.capture()))
+    when(patrawinDaoMock.doesUserExist(userIdentityCaptor.capture()))
         .thenReturn(false);
 
     connector.postTime(mock(Request.class), timeGroup);
@@ -171,7 +173,7 @@ class PatrawinConnectorPostTimeTest {
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
@@ -180,7 +182,7 @@ class PatrawinConnectorPostTimeTest {
         fakeGenerator.randomTimeRow().modifier(null)));
 
     ArgumentCaptor<Integer> modifierCaptor = ArgumentCaptor.forClass(Integer.class);
-    when(patrawinDao.doesActivityCodeExist(modifierCaptor.capture()))
+    when(patrawinDaoMock.doesActivityCodeExist(modifierCaptor.capture()))
         .thenReturn(false);
 
     connector.postTime(mock(Request.class), timeGroup);
@@ -197,22 +199,22 @@ class PatrawinConnectorPostTimeTest {
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verify(patrawinDao, never()).doesActivityCodeExist(anyInt());
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+    verify(patrawinDaoMock, never()).doesActivityCodeExist(anyInt());
+    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
   void postTime_nonexistent_activity_code_should_fail() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
 
-    when(patrawinDao.doesActivityCodeExist(anyInt()))
+    when(patrawinDaoMock.doesActivityCodeExist(anyInt()))
         .thenReturn(false);
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.PERMANENT_FAILURE);
 
-    verify(patrawinDao, times(1)).doesActivityCodeExist(anyInt());
-    verify(patrawinDao, never()).createWorklog(any(Worklog.class));
+    verify(patrawinDaoMock, times(1)).doesActivityCodeExist(anyInt());
+    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
@@ -221,10 +223,10 @@ class PatrawinConnectorPostTimeTest {
 
     RuntimeException createWorklogException = new RuntimeException("Test exception");
     doThrow(createWorklogException)
-        .when(patrawinDao)
+        .when(patrawinDaoMock)
         .createWorklog(any(Worklog.class));
 
-    when(patrawinDao.doesCaseExist(anyString()))
+    when(patrawinDaoMock.doesCaseExist(anyString()))
         .thenReturn(true);
 
     final PostResult result = connector.postTime(mock(Request.class), timeGroup);
@@ -257,26 +259,26 @@ class PatrawinConnectorPostTimeTest {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().tags(
         Arrays.asList(existentCaseTag, nonexistentCaseOrClientTag, existentClientTag));
 
-    when(patrawinDao.doesCaseExist(existentCaseTag.getName()))
+    when(patrawinDaoMock.doesCaseExist(existentCaseTag.getName()))
         .thenReturn(true);
-    when(patrawinDao.doesCaseExist(nonexistentCaseOrClientTag.getName()))
+    when(patrawinDaoMock.doesCaseExist(nonexistentCaseOrClientTag.getName()))
         .thenReturn(false);
-    when(patrawinDao.doesCaseExist(existentClientTag.getName()))
+    when(patrawinDaoMock.doesCaseExist(existentClientTag.getName()))
         .thenReturn(false);
 
-    when(patrawinDao.doesClientExist(nonexistentCaseOrClientTag.getName()))
+    when(patrawinDaoMock.doesClientExist(nonexistentCaseOrClientTag.getName()))
         .thenReturn(false);
-    when(patrawinDao.doesClientExist(existentClientTag.getName()))
+    when(patrawinDaoMock.doesClientExist(existentClientTag.getName()))
         .thenReturn(true);
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
 
-    verify(patrawinDao, times(3)).doesCaseExist(anyString());
-    verify(patrawinDao, times(2)).doesClientExist(anyString());
+    verify(patrawinDaoMock, times(3)).doesCaseExist(anyString());
+    verify(patrawinDaoMock, times(2)).doesClientExist(anyString());
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
-    verify(patrawinDao, times(2)).createWorklog(worklogCaptor.capture());
+    verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
 
     List<Worklog> createdWorklogs = worklogCaptor.getAllValues();
 
@@ -299,41 +301,143 @@ class PatrawinConnectorPostTimeTest {
         .isEqualTo(PostResult.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
-    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+    verify(patrawinDaoMock, times(1)).createWorklog(worklogCaptor.capture());
 
     assertThat(worklogCaptor.getValue().getUsernameOrEmail())
         .isEqualTo(userExternalId);
   }
 
   @Test
-  void postTime_worklog_narrative_contains_valid_data() {
+  void postTime_narrative_duration_divide_between_tags() {
+    final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
+
+    final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
+        .modifier("123").activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+    final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
+        .modifier("123").activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+
+    setPrerequisitesForSuccessfulPostTime(user, tags);
+
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
         .narrativeType(TimeGroup.NarrativeTypeEnum.AND_TIME_ROW_ACTIVITY_DESCRIPTIONS)
-        .tags(ImmutableList.of(fakeGenerator.randomTag()));
+        .timeRows(ImmutableList.of(earliestTimeRow, latestTimeRow))
+        .tags(tags)
+        .user(user)
+        .totalDurationSecs(3000);
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
-    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+    verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
+    List<Worklog> worklogs = worklogCaptor.getAllValues();
 
-    String actualNarrative = worklogCaptor.getValue().getNarrative();
+    assertThat(worklogs.get(0).getNarrative())
+        .as("time rows should be grouped by segment hour in ascending order")
+        .startsWith(timeGroup.getDescription())
+        .contains(
+            "\r\n06:00 - 06:59\n" +
+                "- 1m 6s - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription() + "\n" +
+                "\r\n10:00 - 10:59\n" +
+                "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
+        )
+        .contains("\r\nTotal Worked Time: 41m 6s\n" +
+            "Total Chargeable Time: 50m\n" +
+            "Experience Weighting: 50%")
+        .endsWith("\r\nThe above times have been split across 2 cases and are thus greater than " +
+            "the chargeable time in this case");
 
-    assertThat(actualNarrative)
-        .contains(timeGroup.getDescription());
+    assertThat(worklogs.get(0).getNarrative())
+        .isEqualTo(worklogs.get(1).getNarrative());
+  }
 
-    assertThat(actualNarrative)
-        .contains(String.valueOf(timeGroup.getUser().getExperienceWeightingPercent()));
+  @Test
+  void postTime_narrative_whole_duration_each_tag() {
+    final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
-    timeGroup.getTimeRows().forEach(timeRow -> {
-      assertThat(actualNarrative)
-          .contains(timeRow.getDescription());
-      assertThat(actualNarrative)
-          .contains(timeRow.getActivity());
-      assertThat(actualNarrative)
-          .doesNotContain("The above times have been split across 1 cases / clients and are thus greater than the " +
-              "chargeable time on this case.");
-    });
+    final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
+        .modifier("123").activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+    final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
+        .modifier("123").activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+
+    setPrerequisitesForSuccessfulPostTime(user, tags);
+
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.WHOLE_DURATION_TO_EACH_TAG)
+        .narrativeType(TimeGroup.NarrativeTypeEnum.AND_TIME_ROW_ACTIVITY_DESCRIPTIONS)
+        .timeRows(ImmutableList.of(earliestTimeRow, latestTimeRow))
+        .tags(tags)
+        .user(user)
+        .totalDurationSecs(3000);
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
+    List<Worklog> worklogs = worklogCaptor.getAllValues();
+
+    assertThat(worklogs.get(0).getNarrative())
+        .as("time rows should be grouped by segment hour in ascending order")
+        .startsWith(timeGroup.getDescription())
+        .contains(
+            "\r\n06:00 - 06:59\n" +
+                "- 1m 6s - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription() + "\n" +
+                "\r\n10:00 - 10:59\n" +
+                "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
+        )
+        .endsWith("\r\nTotal Worked Time: 41m 6s\n" +
+            "Total Chargeable Time: 50m\n" +
+            "Experience Weighting: 50%");
+
+    assertThat(worklogs.get(0).getNarrative())
+        .isEqualTo(worklogs.get(1).getNarrative());
+  }
+
+  @Test
+  void postTime_narrative_narrative_only() {
+    final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
+
+    final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
+        .modifier("123").activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+    final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
+        .modifier("123").activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+
+    setPrerequisitesForSuccessfulPostTime(user, tags);
+
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.WHOLE_DURATION_TO_EACH_TAG)
+        .narrativeType(TimeGroup.NarrativeTypeEnum.ONLY)
+        .timeRows(ImmutableList.of(earliestTimeRow, latestTimeRow))
+        .tags(tags)
+        .user(user)
+        .totalDurationSecs(3000);
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup))
+        .isEqualTo(PostResult.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
+    List<Worklog> worklogs = worklogCaptor.getAllValues();
+
+    assertThat(worklogs.get(0).getNarrative())
+        .as("time rows should be grouped by segment hour in ascending order")
+        .startsWith(timeGroup.getDescription())
+        .doesNotContain(earliestTimeRow.getActivity(), earliestTimeRow.getDescription())
+        .doesNotContain(latestTimeRow.getActivity(), latestTimeRow.getDescription())
+        .endsWith("\r\nTotal Worked Time: 41m 6s\n" +
+            "Total Chargeable Time: 50m\n" +
+            "Experience Weighting: 50%");
+
+    assertThat(worklogs.get(0).getNarrative())
+        .isEqualTo(worklogs.get(1).getNarrative());
   }
 
   @Test
@@ -348,7 +452,7 @@ class PatrawinConnectorPostTimeTest {
         .isEqualTo(PostResult.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
-    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+    verify(patrawinDaoMock, times(1)).createWorklog(worklogCaptor.capture());
 
     final OffsetDateTime expectedActivityStartTime = OffsetDateTime.of(2018, 11, 1, 14, 0, 0, 0, ZoneOffset.ofHours(0));
     assertThat(worklogCaptor.getValue().getStartTime())
@@ -373,7 +477,7 @@ class PatrawinConnectorPostTimeTest {
         .isEqualTo(PostResult.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
-    verify(patrawinDao, times(2)).createWorklog(worklogCaptor.capture());
+    verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
 
     List<Worklog> allValues = worklogCaptor.getAllValues();
     assertThat(allValues.get(0).getDurationSeconds())
@@ -396,7 +500,7 @@ class PatrawinConnectorPostTimeTest {
         .isEqualTo(PostResult.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
-    verify(patrawinDao, times(1)).createWorklog(worklogCaptor.capture());
+    verify(patrawinDaoMock, times(1)).createWorklog(worklogCaptor.capture());
 
     final int expectedChargeableTimeSeconds = 400;
     assertThat(worklogCaptor.getValue().getChargeableTimeSeconds())
@@ -410,7 +514,7 @@ class PatrawinConnectorPostTimeTest {
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
     doThrow(new IllegalStateException("Detailed error message why posting time failed"))
-        .when(patrawinDao).createWorklog(any());
+        .when(patrawinDaoMock).createWorklog(any());
 
     final PostResult result = connector.postTime(mock(Request.class), timeGroup);
 
@@ -420,5 +524,13 @@ class PatrawinConnectorPostTimeTest {
     assertThat(result.getMessage())
         .as("reason for failure should be the msg of the IllegalStateException")
         .contains("Detailed error message why posting time failed");
+  }
+
+  private void setPrerequisitesForSuccessfulPostTime(User user, List<Tag> tags) {
+    when(patrawinDaoMock.doesUserExist(user.getExternalId()))
+        .thenReturn(true);
+
+    tags.forEach(tag -> when(patrawinDaoMock.doesCaseExist(tag.getName()))
+        .thenReturn(true));
   }
 }
