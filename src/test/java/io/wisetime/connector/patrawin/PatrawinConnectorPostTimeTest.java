@@ -347,8 +347,8 @@ class PatrawinConnectorPostTimeTest {
         .contains("\r\nTotal Worked Time: 41m 6s\n" +
             "Total Chargeable Time: 50m\n" +
             "Experience Weighting: 50%")
-        .endsWith("\r\nThe above times have been split across 2 cases and are thus greater than " +
-            "the chargeable time in this case");
+        .endsWith("\r\nThe above times have been split across 2 items and are thus greater than " +
+            "the chargeable time in this item");
 
     assertThat(worklogs.get(0).getNarrative())
         .isEqualTo(worklogs.get(1).getNarrative());
