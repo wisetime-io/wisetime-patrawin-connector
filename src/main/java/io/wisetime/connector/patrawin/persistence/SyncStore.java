@@ -29,6 +29,9 @@ public class SyncStore {
   private static final String LAST_SYNCED_CLIENT_NUMBERS_KEY = "printLast-synced-client-numbers-csv";
   private static final String DELIMITER = "@@";
 
+  // https://docs.microsoft.com/en-us/sql/t-sql/data-types/datetime-transact-sql?view=sql-server-2017
+  private static final LocalDateTime MIN_SQL_DATE_TIME = LocalDateTime.of(1753, 1, 1, 0, 0);
+
   private ConnectorStore connectorStore;
 
   public SyncStore(final ConnectorStore connectorStore) {
@@ -42,7 +45,7 @@ public class SyncStore {
     return connectorStore
         .getString(LAST_SYNCED_CASE_CREATION_TIME_KEY)
         .map(LocalDateTime::parse)
-        .orElse(LocalDateTime.MIN);
+        .orElse(MIN_SQL_DATE_TIME);
   }
 
   /**
@@ -62,7 +65,7 @@ public class SyncStore {
     return connectorStore
         .getString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY)
         .map(LocalDateTime::parse)
-        .orElse(LocalDateTime.MIN);
+        .orElse(MIN_SQL_DATE_TIME);
   }
 
   /**

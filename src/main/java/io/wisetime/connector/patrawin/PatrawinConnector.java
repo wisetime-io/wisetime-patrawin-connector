@@ -35,7 +35,6 @@ import io.wisetime.connector.patrawin.model.Client;
 import io.wisetime.connector.patrawin.model.ImmutableWorklog;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
 import io.wisetime.connector.patrawin.persistence.SyncStore;
-import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.connector.template.TemplateFormatter;
 import io.wisetime.connector.template.TemplateFormatterConfig;
 import io.wisetime.connector.utils.DurationCalculator;
@@ -64,8 +63,6 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @Inject
   private PatrawinDao patrawinDao;
-  @Inject
-  private TimeDbFormatter timeDbFormatter;
 
   @Override
   public void init(ConnectorModule connectorModule) {

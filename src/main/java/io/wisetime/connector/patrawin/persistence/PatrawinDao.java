@@ -7,6 +7,7 @@ package io.wisetime.connector.patrawin.persistence;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.codejargon.fluentjdbc.api.FluentJdbc;
@@ -97,7 +98,7 @@ public class PatrawinDao {
     }
     return selectQuery.listResult(rs -> ImmutableCase.builder()
         .caseNumber(rs.getString(1))
-        .description(rs.getString(2))
+        .description(StringUtils.trimToEmpty(rs.getString(2)))
         .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
     );
@@ -133,7 +134,7 @@ public class PatrawinDao {
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
         .clientNumber(rs.getString(1))
-        .alias(rs.getString(2))
+        .alias(StringUtils.trimToEmpty(rs.getString(2)))
         .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
     );
