@@ -9,6 +9,7 @@ import com.google.common.collect.ImmutableList;
 import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import io.wisetime.connector.datastore.ConnectorStore;
@@ -38,11 +39,10 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast case that was synced
    */
-  public LocalDateTime getLastSyncedCaseCreationTime() {
+  public Optional<LocalDateTime> getLastSyncedCaseCreationTime() {
     return connectorStore
         .getString(LAST_SYNCED_CASE_CREATION_TIME_KEY)
-        .map(LocalDateTime::parse)
-        .orElse(LocalDateTime.MIN);
+        .map(LocalDateTime::parse);
   }
 
   /**
@@ -58,11 +58,10 @@ public class SyncStore {
   /**
    * @return the creation time of the printLast client that was synced
    */
-  public LocalDateTime getLastSyncedClientCreationTime() {
+  public Optional<LocalDateTime> getLastSyncedClientCreationTime() {
     return connectorStore
         .getString(LAST_SYNCED_CLIENT_CREATION_TIME_KEY)
-        .map(LocalDateTime::parse)
-        .orElse(LocalDateTime.MIN);
+        .map(LocalDateTime::parse);
   }
 
   /**

@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.config.RuntimeConfig;
@@ -141,8 +142,8 @@ class PatrawinConnectorPerformTagUpdateTest {
     Case case1 = fakeGenerator.randomCase();
     Case case2 = fakeGenerator.randomCase();
 
-    LocalDateTime lastSyncedCaseCreationTime = LocalDateTime.MIN;
-    doReturn(lastSyncedCaseCreationTime)
+    LocalDateTime lastSyncedCaseCreationTime = LocalDateTime.now().withYear(1753);
+    doReturn(Optional.of(lastSyncedCaseCreationTime))
         .when(syncStore)
         .getLastSyncedCaseCreationTime();
 
@@ -151,7 +152,7 @@ class PatrawinConnectorPerformTagUpdateTest {
         .when(syncStore)
         .getLastSyncedCaseNumbers();
 
-    ArgumentCaptor<LocalDateTime> lastSyncedCaseCreationTimeCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+    ArgumentCaptor<Optional<LocalDateTime>> lastSyncedCaseCreationTimeCaptor = ArgumentCaptor.forClass(Optional.class);
     ArgumentCaptor<List> lastSyncedCaseNumbersCaptor = ArgumentCaptor.forClass(List.class);
     when(patrawinDao.findCasesOrderedByCreationTime(lastSyncedCaseCreationTimeCaptor.capture(),
         lastSyncedCaseNumbersCaptor.capture(), anyInt()))
@@ -160,7 +161,7 @@ class PatrawinConnectorPerformTagUpdateTest {
     connector.syncCases();
 
     assertThat(lastSyncedCaseCreationTimeCaptor.getValue())
-        .isEqualTo(lastSyncedCaseCreationTime);
+        .contains(lastSyncedCaseCreationTime);
 
     assertThat(lastSyncedCaseNumbersCaptor.getValue())
         .isEqualTo(lastSyncedCaseNumbers);
@@ -222,8 +223,8 @@ class PatrawinConnectorPerformTagUpdateTest {
     Client client1 = fakeGenerator.randomClient();
     Client client2 = fakeGenerator.randomClient();
 
-    LocalDateTime lastSyncedClientCreationTime = LocalDateTime.MIN;
-    doReturn(lastSyncedClientCreationTime)
+    LocalDateTime lastSyncedClientCreationTime = LocalDateTime.now().withYear(1753);
+    doReturn(Optional.of(lastSyncedClientCreationTime))
         .when(syncStore)
         .getLastSyncedClientCreationTime();
 
@@ -232,7 +233,7 @@ class PatrawinConnectorPerformTagUpdateTest {
         .when(syncStore)
         .getLastSyncedClientNumbers();
 
-    ArgumentCaptor<LocalDateTime> lastSyncedClientsCreationTimeCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
+    ArgumentCaptor<Optional<LocalDateTime>> lastSyncedClientsCreationTimeCaptor = ArgumentCaptor.forClass(Optional.class);
     ArgumentCaptor<List> lastSyncedClientsNumbersCaptor = ArgumentCaptor.forClass(List.class);
     when(patrawinDao.findClientsOrderedByCreationTime(lastSyncedClientsCreationTimeCaptor.capture(),
         lastSyncedClientsNumbersCaptor.capture(), anyInt()))
@@ -241,7 +242,7 @@ class PatrawinConnectorPerformTagUpdateTest {
     connector.syncClients();
 
     assertThat(lastSyncedClientsCreationTimeCaptor.getValue())
-        .isEqualTo(lastSyncedClientCreationTime);
+        .contains(lastSyncedClientCreationTime);
 
     assertThat(lastSyncedClientsNumbersCaptor.getValue())
         .isEqualTo(lastSyncedClientNumbers);

@@ -43,8 +43,8 @@ class SyncStoreTest {
   void getLastSyncedCaseCreationTime_none() {
     when(connectorStore.getString("printLast-synced-case-creation-time")).thenReturn(Optional.empty());
     assertThat(syncStore.getLastSyncedCaseCreationTime())
-        .as("No cases have been synced yet")
-        .isEqualTo(LocalDateTime.MIN);
+        .as("Should return empty if no case has been synced yet")
+        .isEmpty();
   }
 
   @Test
@@ -53,7 +53,7 @@ class SyncStoreTest {
     when(connectorStore.getString("printLast-synced-case-creation-time")).thenReturn(Optional.of(now.toString()));
     assertThat(syncStore.getLastSyncedCaseCreationTime())
         .as("We should get back the correct LocalDateTime value")
-        .isEqualTo(now);
+        .contains(now);
   }
 
   @Test
@@ -115,8 +115,8 @@ class SyncStoreTest {
   void getLastSyncedClientCreationTime_none() {
     when(connectorStore.getString("printLast-synced-client-creation-time")).thenReturn(Optional.empty());
     assertThat(syncStore.getLastSyncedClientCreationTime())
-        .as("No clients have been synced yet")
-        .isEqualTo(LocalDateTime.MIN);
+        .as("Should return empty if no client has been synced yet")
+        .isEmpty();
   }
 
   @Test
@@ -125,7 +125,7 @@ class SyncStoreTest {
     when(connectorStore.getString("printLast-synced-case-creation-time")).thenReturn(Optional.of(now.toString()));
     assertThat(syncStore.getLastSyncedCaseCreationTime())
         .as("We should get back the correct LocalDateTime value")
-        .isEqualTo(now);
+        .contains(now);
   }
 
   @Test
