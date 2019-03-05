@@ -43,7 +43,7 @@ class SyncStoreTest {
   void getLastSyncedCaseCreationTime_none() {
     when(connectorStore.getString("printLast-synced-case-creation-time")).thenReturn(Optional.empty());
     assertThat(syncStore.getLastSyncedCaseCreationTime())
-        .as("Should use the min date supported my MS SQL datetime when no cases have been synced yet")
+        .as("Should return empty if no case has been synced yet")
         .isEmpty();
   }
 
@@ -115,7 +115,7 @@ class SyncStoreTest {
   void getLastSyncedClientCreationTime_none() {
     when(connectorStore.getString("printLast-synced-client-creation-time")).thenReturn(Optional.empty());
     assertThat(syncStore.getLastSyncedClientCreationTime())
-        .as("Should use the min date supported my MS SQL datetime when no clients have been synced yet")
+        .as("Should return empty if no client has been synced yet")
         .isEmpty();
   }
 
