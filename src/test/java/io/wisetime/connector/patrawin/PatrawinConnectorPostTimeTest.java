@@ -35,6 +35,7 @@ import io.wisetime.generated.connect.TimeRow;
 import io.wisetime.generated.connect.User;
 import spark.Request;
 
+import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -55,7 +56,8 @@ import static org.mockito.Mockito.when;
  */
 class PatrawinConnectorPostTimeTest {
 
-  private static final String DEFAULT_MODIFIER = "123456";
+  private static final String DEFAULT_MODIFIER = "default modifier";
+  private static final String DEFAULT_ACTIVITY_CODE = "123456";
 
   private static PatrawinDao patrawinDaoMock = mock(PatrawinDao.class);
   private static ApiClient apiClientMock = mock(ApiClient.class);
@@ -71,7 +73,10 @@ class PatrawinConnectorPostTimeTest {
     });
     connector = injector.getInstance(PatrawinConnector.class);
 
-    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, DEFAULT_MODIFIER);
+    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.DEFAULT_MODIFIER, DEFAULT_MODIFIER);
+    RuntimeConfig.setProperty(
+        PatrawinConnectorConfigKey.TAG_MODIFIER_ACTIVITY_CODE_MAPPING, DEFAULT_MODIFIER + ":" + DEFAULT_ACTIVITY_CODE
+    );
 
     // Ensure PatrawinConnector#init will not fail
     doReturn(true).when(patrawinDaoMock).hasExpectedSchema();
@@ -188,7 +193,7 @@ class PatrawinConnectorPostTimeTest {
     connector.postTime(mock(Request.class), timeGroup);
 
     assertThat(modifierCaptor.getValue())
-        .isEqualTo(123456);
+        .isEqualTo(Integer.parseInt(DEFAULT_ACTIVITY_CODE));
   }
 
   @Test
