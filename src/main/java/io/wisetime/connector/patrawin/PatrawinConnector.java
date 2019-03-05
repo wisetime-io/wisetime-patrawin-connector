@@ -102,7 +102,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncCases() {
-    final LocalDateTime lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
+    final Optional<LocalDateTime> lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
     final List<String> lastPreviouslySyncedCaseNumbers = syncStore.getLastSyncedCaseNumbers();
     final List<Case> cases = patrawinDao.findCasesOrderedByCreationTime(
         lastPreviouslySyncedCaseCreationTime,
@@ -140,7 +140,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @VisibleForTesting
   boolean syncClients() {
-    final LocalDateTime lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
+    final Optional<LocalDateTime> lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
     final List<String> lastPreviouslySyncedClientNumbers = syncStore.getLastSyncedClientNumbers();
     final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
         lastPreviouslySyncedClientCreationTime,

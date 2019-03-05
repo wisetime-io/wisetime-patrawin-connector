@@ -31,6 +31,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Optional;
 
 import javax.inject.Inject;
 import javax.sql.DataSource;
@@ -275,7 +276,7 @@ class PatrawinDaoTest {
 
     // initial query
     final List<Case> initialClients = patrawinDao.findCasesOrderedByCreationTime(
-        now.minus(7, ChronoUnit.DAYS), Lists.newArrayList(), 3
+        Optional.of(now.minus(7, ChronoUnit.DAYS)), Lists.newArrayList(), 3
     );
 
     assertThat(initialClients)
@@ -287,12 +288,26 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Case> nextCases = patrawinDao.findCasesOrderedByCreationTime(
-        now, Lists.newArrayList(createdNow2.getCaseNumber()), 3
+        Optional.of(now), Lists.newArrayList(createdNow2.getCaseNumber()), 3
     );
 
     assertThat(nextCases)
         .as("should only contain the matching cases excluding those case numbers specified")
         .containsExactly(createdNow1);
+  }
+
+  @Test
+  void findCasesOrderedByCreationTime_start_at_min_date() {
+    final Case existingCase = patrawinDaoTestUtils
+        .createCase(fakeCaseClientGenerator.randomCase(LocalDateTime.now().withYear(1753)));
+
+    final List<Case> initialClients = patrawinDao.findCasesOrderedByCreationTime(
+        Optional.empty(), Lists.newArrayList(), 3
+    );
+
+    assertThat(initialClients)
+        .as("When no creation time provided, it should retrieve cases from the minimum date supported")
+        .containsExactly(existingCase);
   }
 
   @Test
@@ -311,7 +326,7 @@ class PatrawinDaoTest {
 
     // initial query
     final List<Client> initialClients = patrawinDao.findClientsOrderedByCreationTime(
-        now.minus(7, ChronoUnit.DAYS), Lists.newArrayList(), 3
+        Optional.of(now.minus(7, ChronoUnit.DAYS)), Lists.newArrayList(), 3
     );
 
     assertThat(initialClients)
@@ -323,12 +338,26 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Client> nextClients = patrawinDao.findClientsOrderedByCreationTime(
-        now, Lists.newArrayList(createdNow2.clientNumber()), 3
+        Optional.of(now), Lists.newArrayList(createdNow2.clientNumber()), 3
     );
 
     assertThat(nextClients)
         .as("should only contain the matching clients excluding those client IDs specified")
         .containsExactly(createdNow1);
+  }
+
+  @Test
+  void findClientsOrderedByCreationTime_start_at_min_date() {
+    final Client existingClient = patrawinDaoTestUtils
+        .createClient(fakeCaseClientGenerator.randomClient(LocalDateTime.now().withYear(1753)));
+
+    final List<Client> initialClients = patrawinDao.findClientsOrderedByCreationTime(
+        Optional.empty(), Lists.newArrayList(), 3
+    );
+
+    assertThat(initialClients)
+        .as("When no creation time provided, it should retrieve clients from the minimum date supported")
+        .containsExactly(existingClient);
   }
 
   @Test

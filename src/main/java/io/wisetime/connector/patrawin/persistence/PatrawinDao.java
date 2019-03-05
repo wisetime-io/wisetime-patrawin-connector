@@ -25,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import javax.sql.DataSource;
@@ -49,6 +50,9 @@ import static java.util.stream.Collectors.toList;
 public class PatrawinDao {
 
   private static final Logger log = LoggerFactory.getLogger(PatrawinDao.class);
+
+  // https://docs.microsoft.com/en-us/sql/t-sql/data-types/datetime-transact-sql?view=sql-server-2017
+  private static final LocalDateTime MIN_SQL_DATE_TIME = LocalDateTime.of(1753, 1, 1, 0, 0);
 
   private static final String TABLE_NAME_CASE = "ARENDE_1";
   private static final String TABLE_NAME_CLIENT = "KUND_24";
@@ -76,7 +80,7 @@ public class PatrawinDao {
    * @param maxResults          maximum number of cases to return
    * @return list of cases ordered by creation time ascending
    */
-  public List<Case> findCasesOrderedByCreationTime(final LocalDateTime createdOnOrAfter,
+  public List<Case> findCasesOrderedByCreationTime(final Optional<LocalDateTime> createdOnOrAfter,
                                                    final List<String> excludedCaseNumbers,
                                                    final int maxResults) {
     final StringBuilder query = new StringBuilder(
@@ -91,7 +95,7 @@ public class PatrawinDao {
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter))
+        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter.orElse(MIN_SQL_DATE_TIME)))
         .maxRows((long) maxResults);
     if (!excludedCaseNumbers.isEmpty()) {
       selectQuery.namedParam("excludedCaseNumbers", excludedCaseNumbers);
@@ -112,7 +116,7 @@ public class PatrawinDao {
    * @param maxResults            maximum number of clients to return
    * @return list of clients ordered by creation time ascending
    */
-  public List<Client> findClientsOrderedByCreationTime(final LocalDateTime createdOnOrAfter,
+  public List<Client> findClientsOrderedByCreationTime(final Optional<LocalDateTime> createdOnOrAfter,
                                                        final List<String> excludedClientNumbers,
                                                        final int maxResults) {
     final StringBuilder query = new StringBuilder(
@@ -127,7 +131,7 @@ public class PatrawinDao {
 
     final SelectQuery selectQuery = query().select(query.toString())
         .namedParam("maxResults", maxResults)
-        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter))
+        .namedParam("createdOnOrAfter", timeDbFormatter.format(createdOnOrAfter.orElse(MIN_SQL_DATE_TIME)))
         .maxRows((long) maxResults);
     if (!excludedClientNumbers.isEmpty()) {
       selectQuery.namedParam("excludedClientNumbers", excludedClientNumbers);
