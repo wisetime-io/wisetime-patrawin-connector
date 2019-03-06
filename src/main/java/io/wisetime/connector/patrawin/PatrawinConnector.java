@@ -344,9 +344,9 @@ public class PatrawinConnector implements WiseTimeConnector {
     }
 
     final String timeGroupModifier = timeGroupModifiers.iterator().next();
-    final String activityCodeStr = StringUtils.isBlank(timeGroupModifier)
-        ? modifierActivityCodeMap.get(defaultModifier)
-        : timeGroupModifier;
+    final String activityCodeStr =  modifierActivityCodeMap.get(
+        StringUtils.isNotBlank(timeGroupModifier) ? timeGroupModifier : defaultModifier
+    );
 
     final int activityCode;
     try {
