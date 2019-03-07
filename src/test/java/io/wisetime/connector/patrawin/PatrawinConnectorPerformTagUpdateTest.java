@@ -32,6 +32,7 @@ import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.generated.connect.UpsertTagRequest;
 
+import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -64,8 +65,9 @@ class PatrawinConnectorPerformTagUpdateTest {
 
   @BeforeAll
   static void setUp() {
-    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.TAG_UPSERT_PATH, TAG_UPSERT_PATH);
-    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, "123456");
+    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.TAG_UPSERT_PATH, TAG_UPSERT_PATH);
+    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.DEFAULT_MODIFIER, "default modifier");
+    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.TAG_MODIFIER_ACTIVITY_CODE_MAPPING, "default modifier:123456");
 
     Injector injector = Guice.createInjector(binder -> {
       binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao);

@@ -35,6 +35,7 @@ import io.wisetime.generated.connect.TimeRow;
 import io.wisetime.generated.connect.User;
 import spark.Request;
 
+import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -55,7 +56,10 @@ import static org.mockito.Mockito.when;
  */
 class PatrawinConnectorPostTimeTest {
 
-  private static final String DEFAULT_MODIFIER = "123456";
+  private static final String DEFAULT_MODIFIER = "default modifier";
+  private static final String DEFAULT_ACTIVITY_CODE = "123456";
+  private static final String NON_NUMERIC_MODIFIER = "non-numeric";
+  private static final String NON_NUMERIC_ACTIVITY_CODE = "onetwothree";
 
   private static PatrawinDao patrawinDaoMock = mock(PatrawinDao.class);
   private static ApiClient apiClientMock = mock(ApiClient.class);
@@ -71,7 +75,14 @@ class PatrawinConnectorPostTimeTest {
     });
     connector = injector.getInstance(PatrawinConnector.class);
 
-    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.DEFAULT_MODIFIER, DEFAULT_MODIFIER);
+    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.DEFAULT_MODIFIER, DEFAULT_MODIFIER);
+    RuntimeConfig.setProperty(
+        PatrawinConnectorConfigKey.TAG_MODIFIER_ACTIVITY_CODE_MAPPING,
+        String.format(
+            "%s:%s,%s:%s",
+            DEFAULT_MODIFIER, DEFAULT_ACTIVITY_CODE, NON_NUMERIC_MODIFIER, NON_NUMERIC_ACTIVITY_CODE
+        )
+    );
 
     // Ensure PatrawinConnector#init will not fail
     doReturn(true).when(patrawinDaoMock).hasExpectedSchema();
@@ -170,8 +181,9 @@ class PatrawinConnectorPostTimeTest {
         fakeGenerator.randomTimeRow().modifier("1"),
         fakeGenerator.randomTimeRow().modifier(null)));
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
+    PostResult result = connector.postTime(mock(Request.class), timeGroup);
+    assertThat(result).isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(result.getMessage()).contains("Time group has an invalid activity code");
 
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
@@ -188,16 +200,17 @@ class PatrawinConnectorPostTimeTest {
     connector.postTime(mock(Request.class), timeGroup);
 
     assertThat(modifierCaptor.getValue())
-        .isEqualTo(123456);
+        .isEqualTo(Integer.parseInt(DEFAULT_ACTIVITY_CODE));
   }
 
   @Test
   void postTime_modifier_invalid_integer_should_fail() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeGenerator.randomTimeRow().modifier("Modifier")));
+        fakeGenerator.randomTimeRow().modifier(NON_NUMERIC_MODIFIER)));
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
+    PostResult result = connector.postTime(mock(Request.class), timeGroup);
+    assertThat(result).isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(result.getMessage()).contains("Time group has an invalid activity code");
 
     verify(patrawinDaoMock, never()).doesActivityCodeExist(anyInt());
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
@@ -205,9 +218,9 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_nonexistent_activity_code_should_fail() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER);
 
-    when(patrawinDaoMock.doesActivityCodeExist(anyInt()))
+    when(patrawinDaoMock.doesActivityCodeExist(Integer.parseInt(DEFAULT_ACTIVITY_CODE)))
         .thenReturn(false);
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
@@ -219,7 +232,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_db_transaction_error() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER);
 
     RuntimeException createWorklogException = new RuntimeException("Test exception");
     doThrow(createWorklogException)
@@ -241,7 +254,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_with_valid_group_should_succeed() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup();
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER);
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
         .isEqualTo(PostResult.SUCCESS);
@@ -256,8 +269,8 @@ class PatrawinConnectorPostTimeTest {
     final Tag nonexistentCaseOrClientTag = fakeGenerator.randomTag();
     final Tag existentClientTag = fakeGenerator.randomTag();
 
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().tags(
-        Arrays.asList(existentCaseTag, nonexistentCaseOrClientTag, existentClientTag));
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
+        .tags(Arrays.asList(existentCaseTag, nonexistentCaseOrClientTag, existentClientTag));
 
     when(patrawinDaoMock.doesCaseExist(existentCaseTag.getName()))
         .thenReturn(true);
@@ -293,7 +306,7 @@ class PatrawinConnectorPostTimeTest {
   @Test
   void postTime_worklog_has_valid_author_id() {
     final String userExternalId = "ExternalId";
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
         .user(fakeGenerator.randomUser().externalId(userExternalId))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
@@ -312,9 +325,9 @@ class PatrawinConnectorPostTimeTest {
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier("123").activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+        .modifier(DEFAULT_MODIFIER).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier("123").activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+        .modifier(DEFAULT_MODIFIER).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
     List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
 
@@ -359,9 +372,9 @@ class PatrawinConnectorPostTimeTest {
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier("123").activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+        .modifier(DEFAULT_MODIFIER).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier("123").activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+        .modifier(DEFAULT_MODIFIER).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
     List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
 
@@ -404,9 +417,9 @@ class PatrawinConnectorPostTimeTest {
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier("123").activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+        .modifier(DEFAULT_MODIFIER).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier("123").activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+        .modifier(DEFAULT_MODIFIER).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
     List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
 
@@ -444,8 +457,8 @@ class PatrawinConnectorPostTimeTest {
   void postTime_worklog_has_valid_start_time() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .timeRows(ImmutableList.of(
-            fakeGenerator.randomTimeRow().modifier("1").activityHour(2018110115),
-            fakeGenerator.randomTimeRow().modifier("1").activityHour(2018110114)))
+            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110115),
+            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110114)))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
@@ -467,8 +480,8 @@ class PatrawinConnectorPostTimeTest {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .timeRows(ImmutableList.of(
-            fakeGenerator.randomTimeRow().modifier("1").durationSecs(60),
-            fakeGenerator.randomTimeRow().modifier("1").durationSecs(8 * 60)))
+            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).durationSecs(60),
+            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).durationSecs(8 * 60)))
         .totalDurationSecs(20 * 60)
         .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
         .tags(ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag()));
@@ -491,7 +504,7 @@ class PatrawinConnectorPostTimeTest {
    */
   @Test
   void postTime_worklog_has_valid_chargeable_time() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
         .totalDurationSecs(1000)
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .tags(ImmutableList.of(fakeGenerator.randomTag())); // getPerTagDuration ?? strategy
@@ -509,7 +522,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_post_time_not_successful() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
         .totalDurationSecs(1000)
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));

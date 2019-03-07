@@ -18,19 +18,20 @@ In order to use the WiseTime Patrawin Connector, you will need a [WiseTime Conne
 
 Configuration is done through environment variables. The following configuration options are required.
 
-| Environment Variable  | Description                                         |
-| --------------------  | --------------------------------------------------- |
-| API_KEY               | Your WiseTime Connect API Key                       |
-| PATRAWIN_JDBC_URL     | The JDBC URL for your Patrawin database             |
-| PATRAWIN_DB_USER      | Username to use to connect to the Patrawin database |
-| PATRAWIN_DB_PASSWORD  | Password to use to connect to the Patrawin database |
+| Environment Variable               | Description                                                                |
+| ---------------------------------- | -------------------------------------------------------------------------- |
+| API_KEY                            | Your WiseTime Connect API Key                                              |
+| PATRAWIN_JDBC_URL                  | The JDBC URL for your Patrawin database                                    |
+| PATRAWIN_DB_USER                   | Username to use to connect to the Patrawin database                        |
+| PATRAWIN_DB_PASSWORD               | Password to use to connect to the Patrawin database                        |
+| TAG_MODIFIER_ACTIVITY_CODE_MAPPING | Activity code mapping with modifier name as key and activity code as value |
+| DEFAULT_MODIFIER                   | The default modifier to use when it is not explicitly in posted time.      |
 
 The following configuration options are optional.
 
 | Environment Variable  | Description                                                                                                                                                                                                                                    |
 | --------------------- | -----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | CALLER_KEY            | The caller key that WiseTime should provide with post time webhook calls. The connector does not authenticate Webhook calls if not set.                                                                                                        |
-| DEFAULT_MODIFIER      | The default modifier to use when it is not explicitly in posted time.                                                                                                                                                                          |
 | TAG_UPSERT_PATH       | The WiseTime tag folder path to use for Patrawin tags. Defaults to `/Patrawin/` (trailing slash is required). Use `/` for root folder.                                                                                                         |
 | TAG_UPSERT_BATCH_SIZE | Number of tags to upsert at a time. A large batch size mitigates API call latency. Defaults to 500.                                                                                                                                            |
 | DATA_DIR              | If set, the connector will use the directory as the location for storing data to keep track of the Patrawin cases and clients that it has synced. By default, WiseTime Connector will create a temporary dir under `/tmp` as its data storage. |
@@ -51,6 +52,8 @@ docker run -d \
     -e PATRAWIN_JDBC_URL="jdbc:sqlserver://HOST:PORT;databaseName=DATABASE_NAME;ssl=request;useCursors=true" \
     -e PATRAWIN_DB_USER=dbuser \
     -e PATRAWIN_DB_PASSWORD=dbpass \
+    -e TAG_MODIFIER_ACTIVITY_CODE_MAPPING=modifier_name_1:numeric_activity_code_1,modifier_name_2:numeric_activity_code_2 \
+    -e DEFAULT_MODIFIER=modifier_name_1 \
     wisetime/patrawin-connector
 ```
 

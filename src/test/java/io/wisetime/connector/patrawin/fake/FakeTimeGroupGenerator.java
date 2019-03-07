@@ -31,8 +31,11 @@ public class FakeTimeGroupGenerator {
   private static final String TAG_PATH = format("/%s/%s/", FAKER.lorem().word(), FAKER.lorem().word());
 
   public TimeGroup randomTimeGroup() {
-    final String validTimeRowModifier = validTimeRowModifier();
-    final Supplier<TimeRow> timeRowSupplier = () -> randomTimeRow(validTimeRowModifier);
+    return randomTimeGroup(FAKER.lorem().word());
+  }
+
+  public TimeGroup randomTimeGroup(String modifier) {
+    final Supplier<TimeRow> timeRowSupplier = () -> randomTimeRow(modifier);
     final List<TimeRow> timeRows = randomEntities(timeRowSupplier, 1, 10);
 
     return new TimeGroup()
@@ -80,17 +83,13 @@ public class FakeTimeGroupGenerator {
         .firstObservedInHour(FAKER.number().numberBetween(0, 59))
         .durationSecs(FAKER.random().nextInt(120, 600))
         .submittedDate(Long.valueOf(FAKER.numerify("20180#1#1#5#2####")))
-        .modifier(validTimeRowModifier())
+        .modifier(FAKER.lorem().word())
         .description(FAKER.lorem().sentence())
         .source(randomEnum(TimeRow.SourceEnum.class));
   }
 
   public TimeRow randomTimeRow(String modifier) {
     return randomTimeRow().modifier(modifier);
-  }
-
-  private String validTimeRowModifier() {
-    return String.valueOf(FAKER.number().randomNumber());
   }
 
   private <T> List<T> randomEntities(final Supplier<T> supplier, final int min, final int max) {
