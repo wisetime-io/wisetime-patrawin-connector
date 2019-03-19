@@ -258,7 +258,6 @@ public class PatrawinConnector implements WiseTimeConnector {
           .withError(ex)
           .withMessage(ex.getMessage());
     } catch (RuntimeException e) {
-      log.error(e.getMessage(), e);
       return PostResult.TRANSIENT_FAILURE
           .withError(e)
           .withMessage("There was an error posting time to the Patrawin database");
