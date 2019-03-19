@@ -457,8 +457,8 @@ class PatrawinConnectorPostTimeTest {
   void postTime_worklog_has_valid_start_time() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .timeRows(ImmutableList.of(
-            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110115),
-            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110114)))
+            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110115).firstObservedInHour(0),
+            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110114).firstObservedInHour(0)))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup))
