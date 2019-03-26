@@ -58,6 +58,9 @@ public class PatrawinDao {
   private static final String TABLE_NAME_CLIENT = "KUND_24";
   private static final String TABLE_NAME_USER = "BEHORIG_50";
   private static final String TABLE_NAME_ACTIVITY_CODE = "FAKTURATEXTNR_15";
+  private static final String TABLE_NAME_PENDING_TIME = "PENDING_TIME_335";
+
+  private static final String PROCEDURE_NAME_POST_TIME = "pw_PostTime";
 
   private final FluentJdbc fluentJdbc;
   private final TimeDbFormatter timeDbFormatter;
@@ -228,7 +231,10 @@ public class PatrawinDao {
 
   public boolean hasExpectedSchema() {
     log.info("Checking if Patrawin DB has correct schema...");
+    return hasExpectedTables() && hasExpectedProcedures();
+  }
 
+  private boolean hasExpectedTables() {
     final Map<String, Set<String>> requiredTablesAndColumnsMap = new HashMap<>();
     requiredTablesAndColumnsMap.put(
         TABLE_NAME_CASE,
@@ -246,6 +252,10 @@ public class PatrawinDao {
         TABLE_NAME_ACTIVITY_CODE,
         ImmutableSet.of("Fakturatextnr")
     );
+    requiredTablesAndColumnsMap.put(
+        TABLE_NAME_PENDING_TIME,
+        ImmutableSet.of("User_Id", "Arendenr", "Kundnr", "StartTimeUtc", "Minutes", "Fakturatextnr", "Text")
+    );
 
     final Map<String, List<String>> actualTablesAndColumnsMap = query().databaseInspection()
         .selectFromMetaData(meta -> meta.getColumns(null, null, null, null))
@@ -257,6 +267,33 @@ public class PatrawinDao {
     return requiredTablesAndColumnsMap.entrySet().stream()
         .allMatch(entry -> actualTablesAndColumnsMap.containsKey(entry.getKey()) &&
             actualTablesAndColumnsMap.get(entry.getKey()).containsAll(entry.getValue())
+        );
+  }
+
+  private boolean hasExpectedProcedures() {
+    final Map<String, Set<String>> requiredProceduresAndParametersMap = new HashMap<>();
+    requiredProceduresAndParametersMap.put(
+        PROCEDURE_NAME_POST_TIME,
+        ImmutableSet.of("@case_or_client_id",
+            "@username_or_email",
+            "@activity_code",
+            "@narrative",
+            "@narrative_internal_note",
+            "@start_time",
+            "@total_time_secs",
+            "@chargeable_time_secs")
+    );
+
+    Map<String, List<String>> actualProceduresAndParametersMap =
+        query().select("SELECT * FROM INFORMATION_SCHEMA.PARAMETERS")
+            .listResult(rs -> ImmutablePair.of(rs.getString("SPECIFIC_NAME"), rs.getString("PARAMETER_NAME")))
+            .stream()
+            .filter(pair -> requiredProceduresAndParametersMap.containsKey(pair.getKey()))
+            .collect(groupingBy(Pair::getKey, mapping(Pair::getValue, toList())));
+
+    return requiredProceduresAndParametersMap.entrySet().stream()
+        .allMatch(entry -> actualProceduresAndParametersMap.containsKey(entry.getKey()) &&
+            actualProceduresAndParametersMap.get(entry.getKey()).containsAll(entry.getValue())
         );
   }
 
