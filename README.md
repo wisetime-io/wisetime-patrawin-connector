@@ -58,6 +58,8 @@ docker run -d \
     wisetime/patrawin-connector
 ```
 
+Note that you may need to change the ports definition here in the docker run command (and similarly any docker-compose.yaml definition) as well as add the WEBHOOK_PORT environment variable if you set the webhook port other than default (8080).
+
 The Patrawin connector runs self-checks to determine whether it is healthy. If health check fails, the connector will shutdown. This gives us a chance to automatically re-initialise the application through the Docker restart policy.
 
 ## Logging to AWS CloudWatch
