@@ -71,7 +71,7 @@ ext.jacocoLimits = [
         'instruction': 67,
         'line'       : 76,
         'method'     : 78,
-        'class'      : 93
+        'class'      : 88
 ]
 
 def taskRequestString = getGradle().getStartParameter().getTaskRequests().toString()
