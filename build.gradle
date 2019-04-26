@@ -5,12 +5,20 @@
 buildscript {
     repositories {
         mavenCentral()
+        maven {
+            // WT published releases
+            url 'https://s3.eu-central-1.amazonaws.com/artifacts.wisetime.com/mvn2/plugins'
+            content {
+                includeGroup "io.wisetime"
+            }
+        }
     }
     dependencies {
         // https://github.com/GoogleContainerTools/jib/issues/1018
         classpath('org.apache.httpcomponents:httpclient:4.0.1') {
             force = true
         }
+        classpath "io.wisetime:validate-version:0.2.4"
     }
 }
 
@@ -23,6 +31,7 @@ plugins {
     id 'com.google.cloud.tools.jib' version '0.10.0'
     id 'com.github.kt3k.coveralls' version '2.8.2'
     id 'maven'
+    id "com.github.ben-manes.versions" version '0.21.0'
     id 'net.ltgt.apt' version '0.19'
     id 'net.ltgt.apt-idea' version "0.19"
 }
@@ -64,6 +73,12 @@ ext.jacocoLimits = [
         'method'     : 78,
         'class'      : 93
 ]
+
+def taskRequestString = getGradle().getStartParameter().getTaskRequests().toString()
+if (taskRequestString.contains("dependencyUpdates") || taskRequestString.contains("versionCheck")) {
+    // add exclusions for reporting on updates and vulnerabilities
+    apply from: "$rootDir/gradle/versionPluginConfig.gradle"
+}
 
 dependencies {
     compile 'io.wisetime:wisetime-connector:1.3.5'
