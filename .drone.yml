@@ -7,9 +7,6 @@ steps:
     image: docker:git
     commands:
       - git fetch --tags
-    when:
-      branch:
-        - master
 
   - name: restore-cache
     image: drillster/drone-volume-cache
