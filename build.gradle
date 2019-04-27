@@ -18,7 +18,7 @@ buildscript {
         classpath('org.apache.httpcomponents:httpclient:4.0.1') {
             force = true
         }
-        classpath "io.wisetime:validate-version:0.2.4"
+        classpath "io.wisetime:validate-version:0.2.6"
     }
 }
 
@@ -55,6 +55,13 @@ jib {
 
 repositories {
     mavenCentral()
+    maven {
+        // Our published releases repo
+        url 'https://s3.eu-central-1.amazonaws.com/artifacts.wisetime.com/mvn2/releases'
+        content {
+            includeGroup "io.wisetime"
+        }
+    }
 }
 
 tasks.jib.dependsOn compileJava
@@ -98,18 +105,13 @@ dependencies {
     testCompile 'org.junit.jupiter:junit-jupiter:5.4.2'
     testCompile 'org.mockito:mockito-core:2.27.0'
     testCompile 'org.assertj:assertj-core:3.12.2'
-    testCompile('org.testcontainers:testcontainers:1.11.2') {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-    }
-    testCompile('org.testcontainers:mssqlserver:1.11.2') {
-        exclude group: 'org.slf4j', module: 'slf4j-api'
-    }
     testCompile 'org.flywaydb:flyway-core:5.1.1'
     testCompile('com.github.javafaker:javafaker:0.17.2') {
         exclude group: 'org.apache.commons', module: 'commons-lang3'
     }
     testCompile "org.immutables:value:2.7.5:annotations"
     testAnnotationProcessor "org.immutables:value:2.7.5"
+    testCompile 'io.wisetime:wisetime-test-support:2.2.10-5'
 }
 
 test {

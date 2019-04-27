@@ -40,6 +40,7 @@ steps:
     environment:
       GRADLE_USER_HOME: .gcache
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.internal.launcher.welcomeMessageEnabled=false
+      MSSQL_TEST_HOST: mssql-service
     commands:
       - ./gradlew test check
 
@@ -76,6 +77,13 @@ volumes:
     host:
       # if running locally, need once `mkdir -p /tmp/cache`
       path: /tmp/cache
+
+services:
+  - name: mssql-service
+    image: mcr.microsoft.com/mssql/server
+    environment:
+      SA_PASSWORD: A_Str0ng_Required_Password
+      ACCEPT_EULA: Y
 
 trigger:
   event:

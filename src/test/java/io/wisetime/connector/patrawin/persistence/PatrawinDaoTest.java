@@ -19,12 +19,9 @@ import org.codejargon.fluentjdbc.api.query.Query;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.MigrationVersion;
 import org.immutables.value.Value;
-import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.JdbcDatabaseContainer;
-import org.testcontainers.containers.MSSQLServerContainer;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -48,6 +45,9 @@ import io.wisetime.connector.patrawin.model.ImmutableWorklog;
 import io.wisetime.connector.patrawin.model.Worklog;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 import io.wisetime.generated.connect.User;
+import io.wisetime.test_docker.ContainerRuntimeSpec;
+import io.wisetime.test_docker.DockerLauncher;
+import io.wisetime.test_docker.containers.SqlServer;
 
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_PASSWORD;
 import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey.PATRAWIN_DB_USER;
@@ -60,7 +60,7 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class PatrawinDaoTest {
 
-  private static JdbcDatabaseContainer sqlServerContainer = new MSSQLServerContainer();
+  private static JdbcDatabaseContainer sqlServerContainer;
   private static FakeCaseClientGenerator fakeCaseClientGenerator = new FakeCaseClientGenerator();
   private static FakeTimeGroupGenerator fakeTimeGroupGenerator = new FakeTimeGroupGenerator();
   private static Faker faker = new Faker();
@@ -72,7 +72,7 @@ class PatrawinDaoTest {
 
   @BeforeAll
   static void setUp() {
-    sqlServerContainer.start();
+    sqlServerContainer = getContainer();
     RuntimeConfig.setProperty(PATRAWIN_JDBC_URL, sqlServerContainer.getJdbcUrl());
     RuntimeConfig.setProperty(PATRAWIN_DB_USER, sqlServerContainer.getUsername());
     RuntimeConfig.setProperty(PATRAWIN_DB_PASSWORD, sqlServerContainer.getPassword());
@@ -103,11 +103,6 @@ class PatrawinDaoTest {
     query.update("TRUNCATE TABLE CREDIT_LEVEL_334").run();
     query.update("TRUNCATE TABLE PENDING_TIME_335").run();
     query.update("TRUNCATE TABLE CREDIT_LEVEL_334").run();
-  }
-
-  @AfterAll
-  static void tearDown() {
-    sqlServerContainer.stop();
   }
 
   @Test
@@ -391,6 +386,33 @@ class PatrawinDaoTest {
         flyway.setLocations("sql/");
         return flyway;
       }
+    }
+  }
+
+  private static JdbcDatabaseContainer getContainer() {
+    ContainerRuntimeSpec container = DockerLauncher.instance().createContainer(new SqlServer());
+    return new JdbcDatabaseContainer(container);
+  }
+
+  private static class JdbcDatabaseContainer {
+    private final String jdbcUrl;
+
+    JdbcDatabaseContainer(ContainerRuntimeSpec containerSpec) {
+      jdbcUrl = String.format("jdbc:sqlserver://%s:%d",
+          containerSpec.getContainerIpAddress(),
+          containerSpec.getRequiredMappedPort(1433));
+    }
+
+    String getJdbcUrl() {
+      return jdbcUrl;
+    }
+
+    String getUsername() {
+      return "SA";
+    }
+
+    String getPassword() {
+      return "A_Str0ng_Required_Password";
     }
   }
 
