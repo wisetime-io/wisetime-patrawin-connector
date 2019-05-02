@@ -4,18 +4,18 @@
 
 apply plugin: 'io.wisetime.versionChecker'
 
-configurations {
-    rejectConfig {
-        resolutionStrategy {
-            componentSelection {
-                all { ComponentSelection selection ->
-                    boolean rejectedVersionName = ['feature', 'alpha', 'beta', 'rc', 'cr', 'm', 'preview', 'b', 'ea'].any {
-                        qualifier -> selection.candidate.version ==~ /(?i).*[.-]${qualifier}[.\d-+]*/
-                    }
-                    if (rejectedVersionName) {
-                        selection.reject('Release candidate')
-                    }
-                }
+dependencyUpdates.resolutionStrategy {
+    componentSelection { rules ->
+        rules.all { ComponentSelection selection ->
+            boolean rejected = ['feature', 'alpha', 'beta', 'rc', 'cr', 'm', 'preview', 'b', 'ea'].any {
+                qualifier -> selection.candidate.version ==~ /(?i).*[.-]${qualifier}[.\d-+]*/
+            }
+            //ignore prerelease versions based on commit distance e.g. 1.3.9-4 or 1.3.9-2_branch_name
+            if (selection.candidate.group == 'io.wisetime' && selection.candidate.version ==~ /\d+(\.\d+)+-\d+.*/) {
+                rejected = true
+            }
+            if (rejected) {
+                selection.reject('Release candidate')
             }
         }
     }
