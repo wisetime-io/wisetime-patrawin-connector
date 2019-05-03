@@ -56,7 +56,7 @@ docker run -d \
     -e PATRAWIN_DB_PASSWORD=dbpass \
     -e TAG_MODIFIER_ACTIVITY_CODE_MAPPING=modifier_name_1:numeric_activity_code_1,modifier_name_2:numeric_activity_code_2 \
     -e DEFAULT_MODIFIER=modifier_name_1 \
-    wisetime/patrawin-connector
+    wisetime/wisetime-patrawin-connector
 ```
 
 If you are using `CONNECTOR_MODE=WEBHOOK`: Note that you need to define port forwarding in the docker run command (and similarly any docker-compose.yaml definition). If you set the webhook port other than default (8080) you must also add the WEBHOOK_PORT environment variable to match the docker ports definition.
