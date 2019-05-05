@@ -66,8 +66,6 @@ class PatrawinConnectorPerformTagUpdateTest {
   @BeforeAll
   static void setUp() {
     RuntimeConfig.setProperty(PatrawinConnectorConfigKey.TAG_UPSERT_PATH, TAG_UPSERT_PATH);
-    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.DEFAULT_MODIFIER, "default modifier");
-    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.TAG_MODIFIER_ACTIVITY_CODE_MAPPING, "default modifier:123456");
 
     Injector injector = Guice.createInjector(binder -> {
       binder.bind(PatrawinDao.class).toProvider(() -> patrawinDao);

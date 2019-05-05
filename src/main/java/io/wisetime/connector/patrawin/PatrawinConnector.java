@@ -16,9 +16,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
@@ -62,9 +60,6 @@ public class PatrawinConnector implements WiseTimeConnector {
   private SyncStore syncStore;
   private TemplateFormatter narrativeFormatter;
 
-  private String defaultModifier;
-  private Map<String, String> modifierActivityCodeMap;
-
   @Inject
   private PatrawinDao patrawinDao;
 
@@ -72,8 +67,6 @@ public class PatrawinConnector implements WiseTimeConnector {
   public void init(ConnectorModule connectorModule) {
     Preconditions.checkArgument(patrawinDao.hasExpectedSchema(),
         "Patrawin database schema is unsupported by this connector");
-
-    initializeModifiers();
 
     this.apiClient = connectorModule.getApiClient();
     this.syncStore = createSyncStore(connectorModule.getConnectorStore());
@@ -280,9 +273,9 @@ public class PatrawinConnector implements WiseTimeConnector {
   };
 
   @VisibleForTesting
-  Set<String> getTimeGroupModifiers(final TimeGroup timeGroup) {
+  Set<String> getTimeGroupActivityCodes(final TimeGroup timeGroup) {
     return timeGroup.getTimeRows().stream()
-        .map(TimeRow::getModifier)
+        .map(TimeRow::getActivityTypeCode)
         .collect(Collectors.toSet());
   }
 
@@ -307,51 +300,24 @@ public class PatrawinConnector implements WiseTimeConnector {
     return items.get(items.size() - 1).toString();
   }
 
-  private void initializeModifiers() {
-    defaultModifier = RuntimeConfig.getString(PatrawinConnectorConfigKey.DEFAULT_MODIFIER)
-        .orElseThrow(() -> new IllegalStateException("Required configuration param DEFAULT_MODIFIER is not set"));
-
-    modifierActivityCodeMap =
-        Arrays.stream(
-            RuntimeConfig.getString(PatrawinConnectorConfigKey.TAG_MODIFIER_ACTIVITY_CODE_MAPPING)
-                .orElseThrow(() ->
-                    new IllegalStateException("Required configuration param TAG_MODIFIER_ACTIVITY_CODE_MAPPING is not set"))
-                .split(",")
-        )
-            .map(tagModifierMapping -> {
-              final String[] modifierAndWorkCode = tagModifierMapping.trim().split(":");
-              if (modifierAndWorkCode.length != 2) {
-                throw new IllegalStateException("Invalid Patrawin modifier to activity code mapping. "
-                    + "Expecting 'modifier:activityCode' format, got: " + tagModifierMapping);
-              }
-              return modifierAndWorkCode;
-            })
-            .collect(Collectors.toMap(
-                modifierWorkCodePair -> modifierWorkCodePair[0],
-                modifierWorkCodePair -> modifierWorkCodePair[1])
-            );
-
-    Preconditions.checkArgument(modifierActivityCodeMap.containsKey(defaultModifier),
-        "Patrawin modifiers mapping should include activity code for default modifier");
-  }
-
   private Optional<Integer> getTimeGroupActivityCode(final TimeGroup timeGroup) {
-    final Set<String> timeGroupModifiers = getTimeGroupModifiers(timeGroup);
-    if (timeGroupModifiers.size() > 1) {
-      log.error("All time logs within time group should have same modifier, but got: {}", timeGroupModifiers);
+    final Set<String> activityCodes = getTimeGroupActivityCodes(timeGroup);
+    if (activityCodes.size() > 1) {
+      log.error("All time logs within time group should have same activity type, but got: {}", activityCodes);
+      return Optional.empty();
+    }
+    if (activityCodes.isEmpty()) {
+      log.warn("Activity type is not set for time group {}", timeGroup.getGroupId());
       return Optional.empty();
     }
 
-    final String timeGroupModifier = timeGroupModifiers.iterator().next();
-    final String activityCodeStr =  modifierActivityCodeMap.get(
-        StringUtils.isNotBlank(timeGroupModifier) ? timeGroupModifier : defaultModifier
-    );
+    final String activityType = activityCodes.iterator().next();
 
     final int activityCode;
     try {
-      activityCode = Integer.parseInt(activityCodeStr);
+      activityCode = Integer.parseInt(activityType);
     } catch (NumberFormatException e) {
-      log.error("Time group has an invalid format of the activity code " + activityCodeStr);
+      log.error("Time group has an invalid format of the activity code {}", activityType);
       return Optional.empty();
     }
 

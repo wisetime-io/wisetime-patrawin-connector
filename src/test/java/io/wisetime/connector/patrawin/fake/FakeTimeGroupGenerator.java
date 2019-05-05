@@ -34,8 +34,8 @@ public class FakeTimeGroupGenerator {
     return randomTimeGroup(FAKER.lorem().word());
   }
 
-  public TimeGroup randomTimeGroup(String modifier) {
-    final Supplier<TimeRow> timeRowSupplier = () -> randomTimeRow(modifier);
+  public TimeGroup randomTimeGroup(String activityTypeCode) {
+    final Supplier<TimeRow> timeRowSupplier = () -> randomTimeRow(activityTypeCode);
     final List<TimeRow> timeRows = randomEntities(timeRowSupplier, 1, 10);
 
     return new TimeGroup()
@@ -88,8 +88,8 @@ public class FakeTimeGroupGenerator {
         .source(randomEnum(TimeRow.SourceEnum.class));
   }
 
-  public TimeRow randomTimeRow(String modifier) {
-    return randomTimeRow().modifier(modifier);
+  public TimeRow randomTimeRow(String activityTypeCode) {
+    return randomTimeRow().activityTypeCode(activityTypeCode);
   }
 
   private <T> List<T> randomEntities(final Supplier<T> supplier, final int min, final int max) {
