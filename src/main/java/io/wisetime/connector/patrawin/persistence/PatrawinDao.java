@@ -30,8 +30,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.sql.DataSource;
-
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
 import io.wisetime.connector.patrawin.model.ImmutableCase;
