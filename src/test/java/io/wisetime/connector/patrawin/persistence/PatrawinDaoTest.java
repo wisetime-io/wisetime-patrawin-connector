@@ -12,6 +12,7 @@ import com.google.inject.Injector;
 import com.google.inject.Provider;
 
 import com.github.javafaker.Faker;
+import com.zaxxer.hikari.HikariDataSource;
 
 import org.codejargon.fluentjdbc.api.FluentJdbc;
 import org.codejargon.fluentjdbc.api.FluentJdbcBuilder;
@@ -31,7 +32,6 @@ import java.util.List;
 import java.util.Optional;
 
 import javax.inject.Inject;
-import javax.sql.DataSource;
 
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.patrawin.ConnectorLauncher;
@@ -82,7 +82,7 @@ class PatrawinDaoTest {
     );
 
     patrawinDao = injector.getInstance(PatrawinDao.class);
-    fluentJdbc = new FluentJdbcBuilder().connectionProvider(injector.getInstance(DataSource.class)).build();
+    fluentJdbc = new FluentJdbcBuilder().connectionProvider(injector.getInstance(HikariDataSource.class)).build();
     timeDbFormatter = injector.getInstance(TimeDbFormatter.class);
     patrawinDaoTestUtils = new PatrawinDaoTestUtils(fluentJdbc, timeDbFormatter);
 
@@ -375,7 +375,7 @@ class PatrawinDaoTest {
     private static class FlywayPatriciaProvider implements Provider<Flyway> {
 
       @Inject
-      private Provider<DataSource> dataSourceProvider;
+      private Provider<HikariDataSource> dataSourceProvider;
 
       @Override
       public Flyway get() {
