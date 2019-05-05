@@ -43,7 +43,7 @@ class PatrawinConnectorUtilsTest {
     final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
         fakeEntities.randomTimeRow(activityType1),
         fakeEntities.randomTimeRow(activityType2),
-        fakeEntities.randomTimeRow(activityType2),
+        fakeEntities.randomTimeRow(activityType3),
         fakeEntities.randomTimeRow(activityType4)
     ));
     final Set<String> modifiers = connector.getTimeGroupActivityCodes(timeGroup);
