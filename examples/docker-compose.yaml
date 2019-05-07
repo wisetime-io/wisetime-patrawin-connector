@@ -34,9 +34,6 @@ services:
 	  # Set loglevel if other than default - INFO - required
 	  # LOGLEVEL: DEBUG
 
-      # define appropriate timezone
-      TIMEZONE: Australia/Perth
-
       TAG_UPSERT_PATH: /Patrawin/
       TAG_UPSERT_BATCH_SIZE: 500
 
