@@ -15,9 +15,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
-import javax.sql.DataSource;
-
-import io.wisetime.connector.ServerRunner;
+import io.wisetime.connector.Connector;
+import io.wisetime.connector.ConnectorController;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.config.RuntimeConfigKey;
 import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
@@ -31,10 +30,14 @@ import io.wisetime.connector.patrawin.util.TimeDbFormatter;
 public class ConnectorLauncher {
 
   public static void main(final String... args) throws Exception {
-    ServerRunner.createServerBuilder()
+    ConnectorController connectorController = buildConnectorController();
+    connectorController.start();
+  }
+
+  public static ConnectorController buildConnectorController() {
+    return Connector.builder()
         .withWiseTimeConnector(Guice.createInjector(new PatrawinDbModule()).getInstance(PatrawinConnector.class))
-        .build()
-        .startServer();
+        .build();
   }
 
   /**
@@ -95,7 +98,7 @@ public class ConnectorLauncher {
           hikariConfig.getUsername());
 
       bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
-      bind(DataSource.class).toInstance(new HikariDataSource(hikariConfig));
+      bind(HikariDataSource.class).toInstance(new HikariDataSource(hikariConfig));
     }
   }
 }

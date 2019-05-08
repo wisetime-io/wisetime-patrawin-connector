@@ -7,6 +7,8 @@ package io.wisetime.connector.patrawin.persistence;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.Inject;
 
+import com.zaxxer.hikari.HikariDataSource;
+
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
@@ -27,8 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-
-import javax.sql.DataSource;
 
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
@@ -64,9 +64,11 @@ public class PatrawinDao {
 
   private final FluentJdbc fluentJdbc;
   private final TimeDbFormatter timeDbFormatter;
+  private final HikariDataSource dataSource;
 
   @Inject
-  public PatrawinDao(DataSource dataSource, TimeDbFormatter timeDbFormatter) {
+  public PatrawinDao(HikariDataSource dataSource, TimeDbFormatter timeDbFormatter) {
+    this.dataSource = dataSource;
     this.fluentJdbc = new FluentJdbcBuilder().connectionProvider(dataSource).build();
     this.timeDbFormatter = timeDbFormatter;
   }
@@ -319,5 +321,9 @@ public class PatrawinDao {
 
   private Query query() {
     return fluentJdbc.query();
+  }
+
+  public void shutdown() {
+    dataSource.close();
   }
 }

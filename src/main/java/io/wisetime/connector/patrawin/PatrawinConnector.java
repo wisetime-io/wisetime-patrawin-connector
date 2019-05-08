@@ -362,4 +362,9 @@ public class PatrawinConnector implements WiseTimeConnector {
 
     return Optional.empty();
   }
+
+  @Override
+  public void shutdown() {
+    patrawinDao.shutdown();
+  }
 }
