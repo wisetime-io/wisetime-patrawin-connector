@@ -358,8 +358,7 @@ class PatrawinConnectorPostTimeTest {
                 "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
         )
         .contains("\r\nTotal Worked Time: 41m 6s\n" +
-            "Total Chargeable Time: 50m\n" +
-            "Experience Weighting: 50%")
+            "Total Chargeable Time: 50m")
         .endsWith("\r\nThe above times have been split across 2 items and are thus greater than " +
             "the chargeable time in this item");
 
@@ -405,8 +404,7 @@ class PatrawinConnectorPostTimeTest {
                 "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
         )
         .endsWith("\r\nTotal Worked Time: 41m 6s\n" +
-            "Total Chargeable Time: 50m\n" +
-            "Experience Weighting: 50%");
+            "Total Chargeable Time: 50m");
 
     assertThat(worklogs.get(0).getNarrative())
         .isEqualTo(worklogs.get(1).getNarrative());
@@ -446,8 +444,7 @@ class PatrawinConnectorPostTimeTest {
         .doesNotContain(earliestTimeRow.getActivity(), earliestTimeRow.getDescription())
         .doesNotContain(latestTimeRow.getActivity(), latestTimeRow.getDescription())
         .endsWith("\r\nTotal Worked Time: 41m 6s\n" +
-            "Total Chargeable Time: 50m\n" +
-            "Experience Weighting: 50%");
+            "Total Chargeable Time: 50m");
 
     assertThat(worklogs.get(0).getNarrative())
         .isEqualTo(worklogs.get(1).getNarrative());
