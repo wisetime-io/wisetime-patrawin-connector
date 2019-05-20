@@ -24,13 +24,13 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import io.wisetime.connector.ConnectorModule;
+import io.wisetime.connector.WiseTimeConnector;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
 import io.wisetime.connector.config.ConnectorConfigKey;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
-import io.wisetime.connector.integrate.ConnectorModule;
-import io.wisetime.connector.integrate.WiseTimeConnector;
 import io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
@@ -187,16 +187,16 @@ public class PatrawinConnector implements WiseTimeConnector {
 
     final Optional<String> callerKey = RuntimeConfig.getString(ConnectorConfigKey.CALLER_KEY);
     if (callerKey.isPresent() && !callerKey.get().equals(timeGroup.getCallerKey())) {
-      return PostResult.PERMANENT_FAILURE.withMessage("Invalid caller key in post time webhook call");
+      return PostResult.PERMANENT_FAILURE().withMessage("Invalid caller key in post time webhook call");
     }
 
     if (timeGroup.getTags().isEmpty()) {
-      return PostResult.SUCCESS.withMessage("Time group has no tags. There is nothing to post to Patrawin.");
+      return PostResult.SUCCESS().withMessage("Time group has no tags. There is nothing to post to Patrawin.");
     }
 
     final Optional<LocalDateTime> activityStartTime = startTime(timeGroup);
     if (!activityStartTime.isPresent()) {
-      return PostResult.PERMANENT_FAILURE.withMessage("Cannot post time group with no time rows");
+      return PostResult.PERMANENT_FAILURE().withMessage("Cannot post time group with no time rows");
     }
 
     final String authorUsernameOrEmail = StringUtils.isEmpty(timeGroup.getUser().getExternalId()) ?
@@ -204,22 +204,22 @@ public class PatrawinConnector implements WiseTimeConnector {
         timeGroup.getUser().getExternalId();
     // The Patrawin post time stored procedure also performs this validation
     if (!patrawinDao.doesUserExist(authorUsernameOrEmail)) {
-      return PostResult.PERMANENT_FAILURE.withMessage("User does not exist in Patrawin");
+      return PostResult.PERMANENT_FAILURE().withMessage("User does not exist in Patrawin");
     }
 
     final Optional<Integer> activityCode = getTimeGroupActivityCode(timeGroup);
     if (!activityCode.isPresent()) {
-      return PostResult.PERMANENT_FAILURE.withMessage("Time group has an invalid activity code");
+      return PostResult.PERMANENT_FAILURE().withMessage("Time group has an invalid activity code");
     }
 
     final String narrative = narrativeFormatter.format(timeGroup);
     final int workedTimeSeconds = Math.round(DurationCalculator.of(timeGroup)
-        .disregardExperienceRating()
+        .disregardExperienceWeighting()
         .useDurationFrom(DurationSource.SUM_TIME_ROWS)
         .calculate()
         .getPerTagDuration());
     final int chargeableTimeSeconds = Math.round(DurationCalculator.of(timeGroup)
-        .useExperienceRating()
+        .useExperienceWeighting()
         .calculate()
         .getPerTagDuration());
 
@@ -254,15 +254,15 @@ public class PatrawinConnector implements WiseTimeConnector {
       );
     } catch (IllegalStateException ex) {
       // Thrown if Patrawin has rejected the posted time
-      return PostResult.PERMANENT_FAILURE
+      return PostResult.PERMANENT_FAILURE()
           .withError(ex)
           .withMessage(ex.getMessage());
     } catch (RuntimeException e) {
-      return PostResult.TRANSIENT_FAILURE
+      return PostResult.TRANSIENT_FAILURE()
           .withError(e)
           .withMessage("There was an error posting time to the Patrawin database");
     }
-    return PostResult.SUCCESS;
+    return PostResult.SUCCESS();
   }
 
   /**
