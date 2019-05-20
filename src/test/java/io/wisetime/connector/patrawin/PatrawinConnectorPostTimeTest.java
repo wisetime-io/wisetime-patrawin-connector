@@ -18,12 +18,13 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.List;
 
+import io.wisetime.connector.ConnectorModule;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
+import io.wisetime.connector.api_client.PostResult.PostResultStatus;
 import io.wisetime.connector.config.ConnectorConfigKey;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
-import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.patrawin.fake.FakeTimeGroupGenerator;
 import io.wisetime.connector.patrawin.model.Worklog;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
@@ -119,8 +120,8 @@ class PatrawinConnectorPostTimeTest {
         .callerKey("wrong-key")
         .tags(ImmutableList.of());
 
-    assertThat(connector.postTime(mock(Request.class), groupWithNoTags))
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(connector.postTime(mock(Request.class), groupWithNoTags).getStatus())
+        .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
 
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
@@ -129,8 +130,8 @@ class PatrawinConnectorPostTimeTest {
   void postTime_without_tags_should_succeed() {
     final TimeGroup groupWithNoTags = fakeGenerator.randomTimeGroup().tags(ImmutableList.of());
 
-    assertThat(connector.postTime(mock(Request.class), groupWithNoTags))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), groupWithNoTags).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
@@ -139,8 +140,8 @@ class PatrawinConnectorPostTimeTest {
   void postTime_without_time_rows_should_fail() {
     final TimeGroup groupWithNoTimeRows = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of());
 
-    assertThat(connector.postTime(mock(Request.class), groupWithNoTimeRows))
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(connector.postTime(mock(Request.class), groupWithNoTimeRows).getStatus())
+        .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
 
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
@@ -152,8 +153,8 @@ class PatrawinConnectorPostTimeTest {
     when(patrawinDaoMock.doesUserExist(anyString()))
         .thenReturn(false);
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
 
     verify(patrawinDaoMock, times(1)).doesUserExist(anyString());
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
@@ -182,7 +183,7 @@ class PatrawinConnectorPostTimeTest {
         fakeGenerator.randomTimeRow().modifier(null)));
 
     PostResult result = connector.postTime(mock(Request.class), timeGroup);
-    assertThat(result).isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(result.getStatus()).isEqualTo(PostResultStatus.PERMANENT_FAILURE);
     assertThat(result.getMessage()).contains("Time group has an invalid activity code");
 
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
@@ -209,7 +210,7 @@ class PatrawinConnectorPostTimeTest {
         fakeGenerator.randomTimeRow().modifier(NON_NUMERIC_MODIFIER)));
 
     PostResult result = connector.postTime(mock(Request.class), timeGroup);
-    assertThat(result).isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(result.getStatus()).isEqualTo(PostResultStatus.PERMANENT_FAILURE);
     assertThat(result.getMessage()).contains("Time group has an invalid activity code");
 
     verify(patrawinDaoMock, never()).doesActivityCodeExist(anyInt());
@@ -223,8 +224,8 @@ class PatrawinConnectorPostTimeTest {
     when(patrawinDaoMock.doesActivityCodeExist(Integer.parseInt(DEFAULT_ACTIVITY_CODE)))
         .thenReturn(false);
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
 
     verify(patrawinDaoMock, times(1)).doesActivityCodeExist(anyInt());
     verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
@@ -244,8 +245,8 @@ class PatrawinConnectorPostTimeTest {
 
     final PostResult result = connector.postTime(mock(Request.class), timeGroup);
 
-    assertThat(result)
-        .isEqualTo(PostResult.TRANSIENT_FAILURE);
+    assertThat(result.getStatus())
+        .isEqualTo(PostResultStatus.TRANSIENT_FAILURE);
     assertThat(result.getError().isPresent())
         .isTrue();
     assertThat(result.getError().get())
@@ -256,8 +257,8 @@ class PatrawinConnectorPostTimeTest {
   void postTime_with_valid_group_should_succeed() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER);
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
   }
 
   /**
@@ -284,8 +285,8 @@ class PatrawinConnectorPostTimeTest {
     when(patrawinDaoMock.doesClientExist(existentClientTag.getName()))
         .thenReturn(true);
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     verify(patrawinDaoMock, times(3)).doesCaseExist(anyString());
     verify(patrawinDaoMock, times(2)).doesClientExist(anyString());
@@ -310,8 +311,8 @@ class PatrawinConnectorPostTimeTest {
         .user(fakeGenerator.randomUser().externalId(userExternalId))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(1)).createWorklog(worklogCaptor.capture());
@@ -341,8 +342,8 @@ class PatrawinConnectorPostTimeTest {
         .user(user)
         .totalDurationSecs(3000);
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
@@ -387,8 +388,8 @@ class PatrawinConnectorPostTimeTest {
         .user(user)
         .totalDurationSecs(3000);
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
@@ -431,8 +432,8 @@ class PatrawinConnectorPostTimeTest {
         .user(user)
         .totalDurationSecs(3000);
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
@@ -458,8 +459,8 @@ class PatrawinConnectorPostTimeTest {
             fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110114).firstObservedInHour(0)))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(1)).createWorklog(worklogCaptor.capture());
@@ -483,8 +484,8 @@ class PatrawinConnectorPostTimeTest {
         .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
         .tags(ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag()));
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
@@ -506,8 +507,8 @@ class PatrawinConnectorPostTimeTest {
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .tags(ImmutableList.of(fakeGenerator.randomTag())); // getPerTagDuration ?? strategy
 
-    assertThat(connector.postTime(mock(Request.class), timeGroup))
-        .isEqualTo(PostResult.SUCCESS);
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(1)).createWorklog(worklogCaptor.capture());
@@ -528,9 +529,9 @@ class PatrawinConnectorPostTimeTest {
 
     final PostResult result = connector.postTime(mock(Request.class), timeGroup);
 
-    assertThat(result)
+    assertThat(result.getStatus())
         .as("should return permanent failure if Patrawin rejected the posted time")
-        .isEqualTo(PostResult.PERMANENT_FAILURE);
+        .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
     assertThat(result.getMessage())
         .as("reason for failure should be the msg of the IllegalStateException")
         .contains("Detailed error message why posting time failed");
