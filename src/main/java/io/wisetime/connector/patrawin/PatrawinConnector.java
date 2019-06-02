@@ -183,7 +183,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @Override
   public PostResult postTime(Request request, TimeGroup timeGroup) {
-    log.info("Posted time received for {}: {}", timeGroup.getUser().getExternalId(), timeGroup.toString());
+    log.info("Posted time received: {}", timeGroup.getGroupId());
 
     final Optional<String> callerKey = RuntimeConfig.getString(ConnectorConfigKey.CALLER_KEY);
     if (callerKey.isPresent() && !callerKey.get().equals(timeGroup.getCallerKey())) {
@@ -248,8 +248,8 @@ public class PatrawinConnector implements WiseTimeConnector {
               .map(Optional::get)
               .map(createWorklog)
               .forEach(caseOrClientNumber ->
-                  log.info("Posted time to Patrawin case / client {} on behalf of {}",
-                      caseOrClientNumber, authorUsernameOrEmail)
+                  log.info("Posted time {} to Patrawin case / client {}",
+                      timeGroup.getGroupId(), caseOrClientNumber)
               )
       );
     } catch (IllegalStateException ex) {
@@ -338,7 +338,8 @@ public class PatrawinConnector implements WiseTimeConnector {
   private Optional<Integer> getTimeGroupActivityCode(final TimeGroup timeGroup) {
     final Set<String> timeGroupModifiers = getTimeGroupModifiers(timeGroup);
     if (timeGroupModifiers.size() > 1) {
-      log.error("All time logs within time group should have same modifier, but got: {}", timeGroupModifiers);
+      log.error("All time logs within time group {} should have same modifier, but got: {}",
+          timeGroup.getGroupId(), timeGroupModifiers);
       return Optional.empty();
     }
 
@@ -351,7 +352,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     try {
       activityCode = Integer.parseInt(activityCodeStr);
     } catch (NumberFormatException e) {
-      log.error("Time group has an invalid format of the activity code " + activityCodeStr);
+      log.error("Time group {} has an invalid format of the activity code {}", timeGroup.getGroupId(), activityCodeStr);
       return Optional.empty();
     }
 
