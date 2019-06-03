@@ -33,7 +33,8 @@ The following configuration options are optional.
 | TAG_UPSERT_PATH       | The WiseTime tag folder path to use for Patrawin tags. Defaults to `/Patrawin/` (trailing slash is required). Use `/` for root folder.                                                                                                         |
 | TAG_UPSERT_BATCH_SIZE | Number of tags to upsert at a time. A large batch size mitigates API call latency. Defaults to 500.                                                                                                                                            |
 | DATA_DIR              | If set, the connector will use the directory as the location for storing data to keep track of the Patrawin cases and clients that it has synced. By default, WiseTime Connector will create a temporary dir under `/tmp` as its data storage. |
-| WEBHOOK_PORT          | If set, the connector will listen to this port e.g. 8090. Defaults to 8080.                                                                                                                                                                    |
+| CONNECTOR_MODE        | If unset, this defaults to `LONG_POLL`: use long polling to fetch posted time. Optional parameters are `WEBHOOK` to start up a server to listen for posted time. `TAG_ONLY` use the connector only to upsert new tags                          |
+| WEBHOOK_PORT          | The connector will listen to this port e.g. 8090, if CONNECTOR_MODE is set to `WEBHOOK`. Defaults to 8080.                                                                                                                                     |
 | LOG_LEVEL             | Define log level. Available values are: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR` and `OFF`. Default is `INFO`.                                                                                                                                |
 
 The connector needs to be able to read from the `ARENDE_1`, `KUND_24`, `BEHORIG_50` and `FAKTURATEXTNR_15` tables, and call the post_time stored procedure in the Patrawin database.
@@ -44,7 +45,6 @@ The easiest way to run the Patrawin Connector is using Docker. For example:
 
 ```text
 docker run -d \
-    -p 8080:8080 \
     --restart=unless-stopped \
     -v volume_name:/usr/local/wisetime-connector/data \
     -e DATA_DIR=/usr/local/wisetime-connector/data \
@@ -52,10 +52,10 @@ docker run -d \
     -e PATRAWIN_JDBC_URL="jdbc:sqlserver://HOST:PORT;databaseName=DATABASE_NAME;ssl=request;useCursors=true" \
     -e PATRAWIN_DB_USER=dbuser \
     -e PATRAWIN_DB_PASSWORD=dbpass \
-    wisetime/patrawin-connector
+    wisetime/wisetime-patrawin-connector
 ```
 
-Note that you may need to change the ports definition here in the docker run command (and similarly any docker-compose.yaml definition) as well as add the WEBHOOK_PORT environment variable if you set the webhook port other than default (8080).
+If you are using `CONNECTOR_MODE=WEBHOOK`: Note that you need to define port forwarding in the docker run command (and similarly any docker-compose.yaml definition). If you set the webhook port other than default (8080) you must also add the WEBHOOK_PORT environment variable to match the docker ports definition.
 
 The Patrawin connector runs self-checks to determine whether it is healthy. If health check fails, the connector will shutdown. This gives us a chance to automatically re-initialise the application through the Docker restart policy.
 

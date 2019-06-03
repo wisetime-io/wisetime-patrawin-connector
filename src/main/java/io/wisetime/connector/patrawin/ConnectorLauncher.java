@@ -15,7 +15,6 @@ import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
 
-import io.wisetime.connector.Connector;
 import io.wisetime.connector.ConnectorController;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.config.RuntimeConfigKey;
@@ -35,7 +34,7 @@ public class ConnectorLauncher {
   }
 
   public static ConnectorController buildConnectorController() {
-    return Connector.builder()
+    return ConnectorController.newBuilder()
         .withWiseTimeConnector(Guice.createInjector(new PatrawinDbModule()).getInstance(PatrawinConnector.class))
         .build();
   }

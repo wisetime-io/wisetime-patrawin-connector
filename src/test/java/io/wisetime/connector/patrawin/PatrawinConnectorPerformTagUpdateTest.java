@@ -19,10 +19,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import io.wisetime.connector.ConnectorModule;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
-import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.patrawin.fake.FakeCaseClientGenerator;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;

@@ -11,9 +11,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import io.wisetime.connector.ConnectorModule;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.datastore.ConnectorStore;
-import io.wisetime.connector.integrate.ConnectorModule;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
 import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
