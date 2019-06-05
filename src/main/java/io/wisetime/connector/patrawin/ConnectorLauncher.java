@@ -4,16 +4,20 @@
 
 package io.wisetime.connector.patrawin;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
 import com.google.inject.Guice;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import io.wisetime.connector.ConnectorController;
 import io.wisetime.connector.config.RuntimeConfig;
@@ -91,11 +95,38 @@ public class ConnectorLauncher {
       hikariConfig.setConnectionTimeout(TimeUnit.MINUTES.toMillis(1));
       hikariConfig.setMaximumPoolSize(10);
 
-      log.info("Connecting to Patrawin database at URL: {}, Username: {}", hikariConfig.getJdbcUrl(),
-          hikariConfig.getUsername());
+      log.info("Connecting to Patrawin database {} with user {}",
+          formatForLogging(hikariConfig.getJdbcUrl()), hikariConfig.getUsername());
 
       bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
       bind(HikariDataSource.class).toInstance(new HikariDataSource(hikariConfig));
+    }
+
+    /**
+     * return Return database connection info, excluding sensitive information (e.g. password).
+     */
+    @VisibleForTesting
+    String formatForLogging(String jdbcUrl) {
+      String host = "UNKNOWN";
+      String port = "UNKNOWN";
+      String databaseName = "UNKNOWN";
+      if (StringUtils.startsWithIgnoreCase(jdbcUrl, "jdbc:sqlserver:")) {
+        Pattern jdbcUrlPattern = Pattern.compile(".*//(\\S+?)(?::(\\d+))?(;.*)?");
+        Matcher matcher = jdbcUrlPattern.matcher(jdbcUrl);
+        if (matcher.matches()) {
+          host = matcher.group(1);
+          port = StringUtils.defaultIfEmpty(matcher.group(2), "DEFAULT");
+        }
+      } else {
+        Pattern jdbcUrlPattern = Pattern.compile(".*//(\\S+:\\S+@)?(\\S+?)(?::(\\d+))?/(\\S+?)(\\?.*)?");
+        Matcher matcher = jdbcUrlPattern.matcher(jdbcUrl);
+        if (matcher.matches()) {
+          host = matcher.group(2);
+          port = StringUtils.defaultIfEmpty(matcher.group(3), "DEFAULT");
+          databaseName = matcher.group(4);
+        }
+      }
+      return String.format("host: %s, port: %s, database name: %s", host, port, databaseName);
     }
   }
 }

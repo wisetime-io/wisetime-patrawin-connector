@@ -176,7 +176,7 @@ public class PatrawinConnector implements WiseTimeConnector {
 
   @Override
   public PostResult postTime(Request request, TimeGroup timeGroup) {
-    log.info("Posted time received for {}: {}", timeGroup.getUser().getExternalId(), timeGroup.toString());
+    log.info("Posted time received: {}", timeGroup.getGroupId());
 
     final Optional<String> callerKey = RuntimeConfig.getString(ConnectorConfigKey.CALLER_KEY);
     if (callerKey.isPresent() && !callerKey.get().equals(timeGroup.getCallerKey())) {
@@ -241,8 +241,8 @@ public class PatrawinConnector implements WiseTimeConnector {
               .map(Optional::get)
               .map(createWorklog)
               .forEach(caseOrClientNumber ->
-                  log.info("Posted time to Patrawin case / client {} on behalf of {}",
-                      caseOrClientNumber, authorUsernameOrEmail)
+                  log.info("Posted time {} to Patrawin case / client {}",
+                      timeGroup.getGroupId(), caseOrClientNumber)
               )
       );
     } catch (IllegalStateException ex) {
@@ -317,7 +317,7 @@ public class PatrawinConnector implements WiseTimeConnector {
     try {
       activityCode = Integer.parseInt(activityType);
     } catch (NumberFormatException e) {
-      log.error("Time group has an invalid format of the activity code {}", activityType);
+      log.error("Time group {} has an invalid format of the activity code {}", timeGroup.getGroupId(), activityType);
       return Optional.empty();
     }
 
