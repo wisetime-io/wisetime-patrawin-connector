@@ -36,7 +36,6 @@ import io.wisetime.generated.connect.TimeRow;
 import io.wisetime.generated.connect.User;
 import spark.Request;
 
-import static io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -57,9 +56,7 @@ import static org.mockito.Mockito.when;
  */
 class PatrawinConnectorPostTimeTest {
 
-  private static final String DEFAULT_MODIFIER = "default modifier";
   private static final String DEFAULT_ACTIVITY_CODE = "123456";
-  private static final String NON_NUMERIC_MODIFIER = "non-numeric";
   private static final String NON_NUMERIC_ACTIVITY_CODE = "onetwothree";
 
   private static PatrawinDao patrawinDaoMock = mock(PatrawinDao.class);
@@ -75,15 +72,6 @@ class PatrawinConnectorPostTimeTest {
       binder.bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
     });
     connector = injector.getInstance(PatrawinConnector.class);
-
-    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.DEFAULT_MODIFIER, DEFAULT_MODIFIER);
-    RuntimeConfig.setProperty(
-        PatrawinConnectorConfigKey.TAG_MODIFIER_ACTIVITY_CODE_MAPPING,
-        String.format(
-            "%s:%s,%s:%s",
-            DEFAULT_MODIFIER, DEFAULT_ACTIVITY_CODE, NON_NUMERIC_MODIFIER, NON_NUMERIC_ACTIVITY_CODE
-        )
-    );
 
     // Ensure PatrawinConnector#init will not fail
     doReturn(true).when(patrawinDaoMock).hasExpectedSchema();
@@ -190,24 +178,9 @@ class PatrawinConnectorPostTimeTest {
   }
 
   @Test
-  void postTime_default_modifier_used_when_no_timegroup_modifier() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeGenerator.randomTimeRow().modifier(null)));
-
-    ArgumentCaptor<Integer> modifierCaptor = ArgumentCaptor.forClass(Integer.class);
-    when(patrawinDaoMock.doesActivityCodeExist(modifierCaptor.capture()))
-        .thenReturn(false);
-
-    connector.postTime(mock(Request.class), timeGroup);
-
-    assertThat(modifierCaptor.getValue())
-        .isEqualTo(Integer.parseInt(DEFAULT_ACTIVITY_CODE));
-  }
-
-  @Test
   void postTime_modifier_invalid_integer_should_fail() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeGenerator.randomTimeRow().modifier(NON_NUMERIC_MODIFIER)));
+        fakeGenerator.randomTimeRow().activityTypeCode(NON_NUMERIC_ACTIVITY_CODE)));
 
     PostResult result = connector.postTime(mock(Request.class), timeGroup);
     assertThat(result.getStatus()).isEqualTo(PostResultStatus.PERMANENT_FAILURE);
@@ -219,7 +192,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_nonexistent_activity_code_should_fail() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER);
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE);
 
     when(patrawinDaoMock.doesActivityCodeExist(Integer.parseInt(DEFAULT_ACTIVITY_CODE)))
         .thenReturn(false);
@@ -233,7 +206,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_db_transaction_error() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER);
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE);
 
     RuntimeException createWorklogException = new RuntimeException("Test exception");
     doThrow(createWorklogException)
@@ -255,7 +228,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_with_valid_group_should_succeed() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER);
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE);
 
     assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
         .isEqualTo(PostResultStatus.SUCCESS);
@@ -270,7 +243,7 @@ class PatrawinConnectorPostTimeTest {
     final Tag nonexistentCaseOrClientTag = fakeGenerator.randomTag();
     final Tag existentClientTag = fakeGenerator.randomTag();
 
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .tags(Arrays.asList(existentCaseTag, nonexistentCaseOrClientTag, existentClientTag));
 
     when(patrawinDaoMock.doesCaseExist(existentCaseTag.getName()))
@@ -307,7 +280,7 @@ class PatrawinConnectorPostTimeTest {
   @Test
   void postTime_worklog_has_valid_author_id() {
     final String userExternalId = "ExternalId";
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .user(fakeGenerator.randomUser().externalId(userExternalId))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
@@ -326,9 +299,9 @@ class PatrawinConnectorPostTimeTest {
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier(DEFAULT_MODIFIER).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier(DEFAULT_MODIFIER).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
     List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
 
@@ -372,9 +345,9 @@ class PatrawinConnectorPostTimeTest {
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier(DEFAULT_MODIFIER).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier(DEFAULT_MODIFIER).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
     List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
 
@@ -416,9 +389,9 @@ class PatrawinConnectorPostTimeTest {
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier(DEFAULT_MODIFIER).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
-        .modifier(DEFAULT_MODIFIER).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
     List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
 
@@ -455,8 +428,10 @@ class PatrawinConnectorPostTimeTest {
   void postTime_worklog_has_valid_start_time() {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .timeRows(ImmutableList.of(
-            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110115).firstObservedInHour(0),
-            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).activityHour(2018110114).firstObservedInHour(0)))
+            fakeGenerator.randomTimeRow()
+                .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110115).firstObservedInHour(0),
+            fakeGenerator.randomTimeRow()
+                .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110114).firstObservedInHour(0)))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
@@ -478,8 +453,8 @@ class PatrawinConnectorPostTimeTest {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .timeRows(ImmutableList.of(
-            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).durationSecs(60),
-            fakeGenerator.randomTimeRow().modifier(DEFAULT_MODIFIER).durationSecs(8 * 60)))
+            fakeGenerator.randomTimeRow().activityTypeCode(DEFAULT_ACTIVITY_CODE).durationSecs(60),
+            fakeGenerator.randomTimeRow().activityTypeCode(DEFAULT_ACTIVITY_CODE).durationSecs(8 * 60)))
         .totalDurationSecs(20 * 60)
         .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
         .tags(ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag()));
@@ -502,7 +477,7 @@ class PatrawinConnectorPostTimeTest {
    */
   @Test
   void postTime_worklog_has_valid_chargeable_time() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .totalDurationSecs(1000)
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .tags(ImmutableList.of(fakeGenerator.randomTag())); // getPerTagDuration ?? strategy
@@ -520,7 +495,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_post_time_not_successful() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_MODIFIER)
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .totalDurationSecs(1000)
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
         .tags(ImmutableList.of(fakeGenerator.randomTag()));

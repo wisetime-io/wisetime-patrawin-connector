@@ -24,8 +24,6 @@ Configuration is done through environment variables. The following configuration
 | PATRAWIN_JDBC_URL                  | The JDBC URL for your Patrawin database                                    |
 | PATRAWIN_DB_USER                   | Username to use to connect to the Patrawin database                        |
 | PATRAWIN_DB_PASSWORD               | Password to use to connect to the Patrawin database                        |
-| TAG_MODIFIER_ACTIVITY_CODE_MAPPING | Activity code mapping with modifier name as key and activity code as value |
-| DEFAULT_MODIFIER                   | The default modifier to use when it is not explicitly in posted time.      |
 
 The following configuration options are optional.
 
@@ -54,8 +52,6 @@ docker run -d \
     -e PATRAWIN_JDBC_URL="jdbc:sqlserver://HOST:PORT;databaseName=DATABASE_NAME;ssl=request;useCursors=true" \
     -e PATRAWIN_DB_USER=dbuser \
     -e PATRAWIN_DB_PASSWORD=dbpass \
-    -e TAG_MODIFIER_ACTIVITY_CODE_MAPPING=modifier_name_1:numeric_activity_code_1,modifier_name_2:numeric_activity_code_2 \
-    -e DEFAULT_MODIFIER=modifier_name_1 \
     wisetime/wisetime-patrawin-connector
 ```
 

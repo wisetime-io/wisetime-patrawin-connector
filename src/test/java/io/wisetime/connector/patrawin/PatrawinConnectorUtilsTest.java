@@ -36,21 +36,23 @@ class PatrawinConnectorUtilsTest {
   void getTimeGroupModifiers_returns_all_unique_timerow_modifiers() {
     final PatrawinConnector connector = new PatrawinConnector();
     final FakeTimeGroupGenerator fakeEntities = new FakeTimeGroupGenerator();
-    final String modifier1 = "123";
-    final String modifier2 = null;
-    final String modifier3 = "Modifier";
-    final String modifier4 = "123";
+    final String activityType1 = "123";
+    final String activityType2 = null;
+    final String activityType3 = "Modifier";
+    final String activityType4 = "123";
     final TimeGroup timeGroup = fakeEntities.randomTimeGroup().timeRows(ImmutableList.of(
-        fakeEntities.randomTimeRow(modifier1),
-        fakeEntities.randomTimeRow(modifier2),
-        fakeEntities.randomTimeRow(modifier3),
-        fakeEntities.randomTimeRow(modifier4)
+        fakeEntities.randomTimeRow(activityType1),
+        fakeEntities.randomTimeRow(activityType2),
+        fakeEntities.randomTimeRow(activityType3),
+        fakeEntities.randomTimeRow(activityType4)
     ));
-    final Set<String> modifiers = connector.getTimeGroupModifiers(timeGroup);
+    final Set<String> modifiers = connector.getTimeGroupActivityCodes(timeGroup);
     assertThat(modifiers)
+        .as("should not contain any duplicates")
         .hasSize(3);
     assertThat(modifiers)
-        .contains(modifier1, modifier2, modifier3);
+        .as("should contain all distinct values")
+        .contains(activityType1, activityType2, activityType3);
   }
 
   @Test
