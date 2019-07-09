@@ -70,11 +70,20 @@ public class PatrawinConnector implements WiseTimeConnector {
 
     this.apiClient = connectorModule.getApiClient();
     this.syncStore = createSyncStore(connectorModule.getConnectorStore());
-    this.narrativeFormatter = new TemplateFormatter(
-        TemplateFormatterConfig.builder()
-            .withTemplatePath("classpath:timegroup-narrative-template.ftl")
-            .build()
-    );
+    // default to no summary
+    if (RuntimeConfig.getBoolean(PatrawinConnectorConfigKey.ADD_SUMMARY_TO_NARRATIVE).orElse(false)) {
+      this.narrativeFormatter = new TemplateFormatter(
+          TemplateFormatterConfig.builder()
+              .withTemplatePath("classpath:timegroup-narrative-template.ftl")
+              .build()
+      );
+    } else {
+      this.narrativeFormatter = new TemplateFormatter(
+          TemplateFormatterConfig.builder()
+              .withTemplatePath("classpath:timegroup-narrative-template_no-summary.ftl")
+              .build()
+      );
+    }
   }
 
   @VisibleForTesting

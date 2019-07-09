@@ -97,6 +97,19 @@ class PatrawinConnectorPostTimeTest {
       invocation.<Runnable>getArgument(0).run();
       return null;
     }).when(patrawinDaoMock).asTransaction(any(Runnable.class));
+
+    // Ensure PatrawinConnector#init will not fail
+    doReturn(true).when(patrawinDaoMock).hasExpectedSchema();
+
+    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.ADD_SUMMARY_TO_NARRATIVE, "false");
+    connector.init(new ConnectorModule(apiClientMock, mock(ConnectorStore.class)));
+  }
+
+  private void initConnectorWithSummaryTemplate() {
+    doReturn(true).when(patrawinDaoMock).hasExpectedSchema();
+
+    RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.ADD_SUMMARY_TO_NARRATIVE, "true");
+    connector.init(new ConnectorModule(apiClientMock, mock(ConnectorStore.class)));
   }
 
   @Test
@@ -296,6 +309,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_narrative_duration_divide_between_tags() {
+    initConnectorWithSummaryTemplate();
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
@@ -332,7 +346,7 @@ class PatrawinConnectorPostTimeTest {
                 "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
         )
         .contains("\r\nTotal Worked Time: 41m 6s\n" +
-            "Total Chargeable Time: 50m")
+            "Total Chargeable Time: 25m")
         .endsWith("\r\nThe above times have been split across 2 items and are thus greater than " +
             "the chargeable time in this item");
 
@@ -341,7 +355,51 @@ class PatrawinConnectorPostTimeTest {
   }
 
   @Test
+  void postTime_narrative_duration_experience_rating() {
+    initConnectorWithSummaryTemplate();
+    final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
+
+    final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110106).firstObservedInHour(45).durationSecs(600);
+    final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag());
+
+    setPrerequisitesForSuccessfulPostTime(user, tags);
+
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
+        .narrativeType(TimeGroup.NarrativeTypeEnum.AND_TIME_ROW_ACTIVITY_DESCRIPTIONS)
+        .timeRows(ImmutableList.of(earliestTimeRow, latestTimeRow))
+        .tags(tags)
+        .user(user)
+        .totalDurationSecs(3000);
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDaoMock, times(1)).createWorklog(worklogCaptor.capture());
+    Worklog worklog = worklogCaptor.getValue();
+
+    assertThat(worklog.getNarrative())
+        .as("time rows should be grouped by segment hour in ascending order")
+        .startsWith(timeGroup.getDescription())
+        .contains(
+            "\r\n06:00 - 06:59\n" +
+                "- 10m - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription() + "\n" +
+                "\r\n10:00 - 10:59\n" +
+                "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
+        )
+        .contains("\r\nTotal Worked Time: 50m\n" +
+            "Total Chargeable Time: 25m")
+        .endsWith("\r\nThe chargeable time has been weighed based on an experience factor of 50%.");
+  }
+
+  @Test
   void postTime_narrative_whole_duration_each_tag() {
+    initConnectorWithSummaryTemplate();
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
@@ -386,6 +444,7 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_narrative_narrative_only() {
+    initConnectorWithSummaryTemplate();
     final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
 
     final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
@@ -419,6 +478,45 @@ class PatrawinConnectorPostTimeTest {
         .doesNotContain(latestTimeRow.getActivity(), latestTimeRow.getDescription())
         .endsWith("\r\nTotal Worked Time: 41m 6s\n" +
             "Total Chargeable Time: 50m");
+
+    assertThat(worklogs.get(0).getNarrative())
+        .isEqualTo(worklogs.get(1).getNarrative());
+  }
+
+  @Test
+  void postTime_narrative_narrative_only_no_summary() {
+    final User user = fakeGenerator.randomUser().experienceWeightingPercent(50);
+
+    final TimeRow earliestTimeRow = fakeGenerator.randomTimeRow()
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110106).firstObservedInHour(57).durationSecs(66);
+    final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
+        .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
+
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+
+    setPrerequisitesForSuccessfulPostTime(user, tags);
+
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup()
+        .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.WHOLE_DURATION_TO_EACH_TAG)
+        .narrativeType(TimeGroup.NarrativeTypeEnum.ONLY)
+        .timeRows(ImmutableList.of(earliestTimeRow, latestTimeRow))
+        .tags(tags)
+        .user(user)
+        .totalDurationSecs(3000);
+
+    assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
+        .isEqualTo(PostResultStatus.SUCCESS);
+
+    ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
+    verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
+    List<Worklog> worklogs = worklogCaptor.getAllValues();
+
+    assertThat(worklogs.get(0).getNarrative())
+        .as("time rows should be grouped by segment hour in ascending order")
+        .startsWith(timeGroup.getDescription())
+        .doesNotContain(earliestTimeRow.getActivity(), earliestTimeRow.getDescription())
+        .doesNotContain(latestTimeRow.getActivity(), latestTimeRow.getDescription())
+        .doesNotContain("Total Worked Time");
 
     assertThat(worklogs.get(0).getNarrative())
         .isEqualTo(worklogs.get(1).getNarrative());
