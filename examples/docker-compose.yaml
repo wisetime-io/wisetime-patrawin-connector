@@ -44,6 +44,9 @@ services:
       # CALLER_KEY: PICK_A_SECRET
       # WEBHOOK_PORT: 8080
 
+      # specify if a time summary block should be added to the end of the narrative when posting time
+      ADD_SUMMARY_TO_NARRATIVE: false
+
       PATRAWIN_JDBC_URL: "jdbc:sqlserver://HOST:PORT;databaseName=DATABASE_NAME;ssl=request;useCursors=true"
       PATRAWIN_JDBC_USERNAME: USERNAME
       PATRAWIN_JDBC_PASSWORD: PASSWORD
