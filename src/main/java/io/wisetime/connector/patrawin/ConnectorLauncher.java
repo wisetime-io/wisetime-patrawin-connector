@@ -34,7 +34,7 @@ public class ConnectorLauncher {
   }
 
   /**
-   * Configuration keys for the WiseTime Jira Connector.
+   * Configuration keys for the WiseTime Patrawin Connector.
    *
    * @author shane.xie@practiceinsight.io
    */
