@@ -339,14 +339,12 @@ class PatrawinConnectorPostTimeTest {
     assertThat(worklogs.get(0).getNarrative())
         .as("time rows should be grouped by segment hour in ascending order")
         .startsWith(timeGroup.getDescription())
-        .contains(
-            "\r\n06:00 - 06:59\n" +
-                "- 1m 6s - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription() + "\n" +
-                "\r\n10:00 - 10:59\n" +
-                "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
-        )
-        .contains("\r\nTotal Worked Time: 41m 6s\n" +
-            "Total Chargeable Time: 25m")
+        .contains("06:00 - 06:59")
+        .contains("- 1m 6s - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription())
+        .contains("10:00 - 10:59")
+        .contains("- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription())
+        .contains("Total Worked Time: 41m 6s")
+        .contains("Total Chargeable Time: 25m")
         .endsWith("\r\nThe above times have been split across 2 items and are thus greater than " +
             "the chargeable time in this item");
 
@@ -386,15 +384,13 @@ class PatrawinConnectorPostTimeTest {
     assertThat(worklog.getNarrative())
         .as("time rows should be grouped by segment hour in ascending order")
         .startsWith(timeGroup.getDescription())
-        .contains(
-            "\r\n06:00 - 06:59\n" +
-                "- 10m - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription() + "\n" +
-                "\r\n10:00 - 10:59\n" +
-                "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
-        )
-        .contains("\r\nTotal Worked Time: 50m\n" +
-            "Total Chargeable Time: 25m")
-        .endsWith("\r\nThe chargeable time has been weighed based on an experience factor of 50%.");
+        .contains("06:00 - 06:59")
+        .contains("- 10m - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription())
+        .contains("10:00 - 10:59")
+        .contains("- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription())
+        .contains("Total Worked Time: 50m")
+        .contains("Total Chargeable Time: 25m")
+        .endsWith("The chargeable time has been weighed based on an experience factor of 50%.");
   }
 
   @Test
@@ -429,14 +425,12 @@ class PatrawinConnectorPostTimeTest {
     assertThat(worklogs.get(0).getNarrative())
         .as("time rows should be grouped by segment hour in ascending order")
         .startsWith(timeGroup.getDescription())
-        .contains(
-            "\r\n06:00 - 06:59\n" +
-                "- 1m 6s - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription() + "\n" +
-                "\r\n10:00 - 10:59\n" +
-                "- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription()
-        )
-        .endsWith("\r\nTotal Worked Time: 41m 6s\n" +
-            "Total Chargeable Time: 50m");
+        .contains("06:00 - 06:59")
+        .contains("- 1m 6s - " + earliestTimeRow.getActivity() + " - " + earliestTimeRow.getDescription())
+        .contains("10:00 - 10:59")
+        .contains("- 40m - " + latestTimeRow.getActivity() + " - " + latestTimeRow.getDescription())
+        .contains("Total Worked Time: 41m 6s")
+        .endsWith("Total Chargeable Time: 50m");
 
     assertThat(worklogs.get(0).getNarrative())
         .isEqualTo(worklogs.get(1).getNarrative());
@@ -476,8 +470,8 @@ class PatrawinConnectorPostTimeTest {
         .startsWith(timeGroup.getDescription())
         .doesNotContain(earliestTimeRow.getActivity(), earliestTimeRow.getDescription())
         .doesNotContain(latestTimeRow.getActivity(), latestTimeRow.getDescription())
-        .endsWith("\r\nTotal Worked Time: 41m 6s\n" +
-            "Total Chargeable Time: 50m");
+        .contains("Total Worked Time: 41m 6s")
+        .endsWith("Total Chargeable Time: 50m");
 
     assertThat(worklogs.get(0).getNarrative())
         .isEqualTo(worklogs.get(1).getNarrative());

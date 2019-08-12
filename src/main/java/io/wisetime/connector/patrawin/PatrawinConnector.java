@@ -75,12 +75,14 @@ public class PatrawinConnector implements WiseTimeConnector {
       this.narrativeFormatter = new TemplateFormatter(
           TemplateFormatterConfig.builder()
               .withTemplatePath("classpath:timegroup-narrative-template.ftl")
+              .withWindowsClr(true)
               .build()
       );
     } else {
       this.narrativeFormatter = new TemplateFormatter(
           TemplateFormatterConfig.builder()
               .withTemplatePath("classpath:timegroup-narrative-template_no-summary.ftl")
+              .withWindowsClr(true)
               .build()
       );
     }
