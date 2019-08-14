@@ -127,7 +127,7 @@ dependencies {
     }
     testCompile "org.immutables:value:2.7.5:annotations"
     testAnnotationProcessor "org.immutables:value:2.7.5"
-    testCompile 'io.wisetime:wisetime-test-support:2.3.4'
+    testCompile 'io.wisetime:wisetime-test-support:2.3.5'
 }
 
 test {
