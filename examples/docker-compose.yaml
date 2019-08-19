@@ -40,7 +40,7 @@ services:
       # uncomment the following - as well as the above docker ports: definition - if the connector
       # should work in webhook mode. If the connector should work using other than the default
       # port, please adapt the docker ports: definition in line with the WEBHOOK_PORT variable.
-      # CONNECTOR_MODE: WEBHOOK
+      # RECEIVE_POSTED_TIME: WEBHOOK
       # CALLER_KEY: PICK_A_SECRET
       # WEBHOOK_PORT: 8080
 
