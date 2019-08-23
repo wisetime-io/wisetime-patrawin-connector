@@ -31,9 +31,11 @@ services:
     environment:
       API_KEY: YOUR_WISETIME_CONNECT_API_KEY
 
-	  # Set loglevel if other than default - INFO - required
-	  # LOGLEVEL: DEBUG
+	    # Set loglevel if other than default - INFO - required
+	    # LOGLEVEL: DEBUG
 
+      # Disable tag uploading by setting TAG_SCAN to DISABLED (tag upload must be done by, etg. using the SQL connector)
+      TAG_SCAN: ENABLED
       TAG_UPSERT_PATH: /Patrawin/
       TAG_UPSERT_BATCH_SIZE: 500
 
@@ -45,7 +47,7 @@ services:
       # WEBHOOK_PORT: 8080
 
       # specify if a time summary block should be added to the end of the narrative when posting time
-      ADD_SUMMARY_TO_NARRATIVE: false
+      ADD_SUMMARY_TO_NARRATIVE: "false"
 
       PATRAWIN_JDBC_URL: "jdbc:sqlserver://HOST:PORT;databaseName=DATABASE_NAME;ssl=request;useCursors=true"
       PATRAWIN_JDBC_USERNAME: USERNAME
