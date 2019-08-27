@@ -5,20 +5,12 @@
 buildscript {
     repositories {
         mavenCentral()
-        maven {
-            // WT published releases
-            url 'https://s3.eu-central-1.amazonaws.com/artifacts.wisetime.com/mvn2/plugins'
-            content {
-                includeGroup "io.wisetime"
-            }
-        }
     }
     dependencies {
         // https://github.com/GoogleContainerTools/jib/issues/1018
         classpath('org.apache.httpcomponents:httpclient:4.0.1') {
             force = true
         }
-        classpath "io.wisetime:validate-version:[0.3.0,)"
     }
 }
 
@@ -34,6 +26,7 @@ plugins {
     id "com.github.ben-manes.versions" version '0.21.0'
     id 'net.ltgt.apt' version '0.21'
     id 'net.ltgt.apt-idea' version "0.21"
+    id "io.wisetime.versionChecker" version "0.7.9"
 }
 
 apply from: "$rootDir/gradle/conf/checkstyle.gradle"
