@@ -4,23 +4,22 @@
 
 package io.wisetime.connector.patrawin;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
+
 import com.google.inject.Guice;
 import com.google.inject.Injector;
-
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
 import io.wisetime.connector.ConnectorModule;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.patrawin.persistence.PatrawinDao;
 import io.wisetime.connector.patrawin.util.MsSqlTimeDbFormatter;
 import io.wisetime.connector.patrawin.util.TimeDbFormatter;
-
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 /**
  * @author alvin.llobrera@practiceinsight.io
@@ -54,5 +53,12 @@ class PatrawinConnectorInitTest {
   @Test
   void init_should_initialized_when_required_params_exist() {
     connector.init(new ConnectorModule(apiClientMock, connectorStoreMock));
+  }
+
+  @Test
+  void getConnectorType_should_not_be_changed() {
+    assertThat(connector.getConnectorType())
+        .as("Connector returns the expected connector type")
+        .isEqualTo("wisetime-patrawin-connector");
   }
 }
