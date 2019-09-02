@@ -4,24 +4,11 @@
 
 package io.wisetime.connector.patrawin;
 
+import static io.wisetime.connector.utils.ActivityTimeCalculator.startTime;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.inject.Inject;
-
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.IOException;
-import java.time.LocalDateTime;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
 import io.wisetime.connector.ConnectorModule;
 import io.wisetime.connector.WiseTimeConnector;
 import io.wisetime.connector.api_client.ApiClient;
@@ -43,9 +30,19 @@ import io.wisetime.generated.connect.Tag;
 import io.wisetime.generated.connect.TimeGroup;
 import io.wisetime.generated.connect.TimeRow;
 import io.wisetime.generated.connect.UpsertTagRequest;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import spark.Request;
-
-import static io.wisetime.connector.utils.ActivityTimeCalculator.startTime;
 
 /**
  * WiseTime Connector implementation for Patrawin
@@ -86,6 +83,11 @@ public class PatrawinConnector implements WiseTimeConnector {
               .build()
       );
     }
+  }
+
+  @Override
+  public String getConnectorType() {
+    return "wisetime-patrawin-connector";
   }
 
   @VisibleForTesting
