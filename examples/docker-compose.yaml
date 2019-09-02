@@ -50,8 +50,8 @@ services:
       ADD_SUMMARY_TO_NARRATIVE: "false"
 
       PATRAWIN_JDBC_URL: "jdbc:sqlserver://HOST:PORT;databaseName=DATABASE_NAME;ssl=request;useCursors=true"
-      PATRAWIN_JDBC_USERNAME: USERNAME
-      PATRAWIN_JDBC_PASSWORD: PASSWORD
+      PATRAWIN_DB_USER: USERNAME
+      PATRAWIN_DB_PASSWORD: PASSWORD
 
       # AWS CloudWatch logging
       AWS_ACCESS_KEY_ID: YOUR_AWS_ACCESS_KEY
