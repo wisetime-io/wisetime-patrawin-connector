@@ -26,7 +26,7 @@ plugins {
     id "com.github.ben-manes.versions" version '0.21.0'
     id 'net.ltgt.apt' version '0.21'
     id 'net.ltgt.apt-idea' version "0.21"
-    id "io.wisetime.versionChecker" version "0.7.9"
+    id "io.wisetime.versionChecker" version "0.7.10"
 }
 
 apply from: "$rootDir/gradle/conf/checkstyle.gradle"
@@ -97,7 +97,7 @@ if (taskRequestString.contains("dependencyUpdates") || taskRequestString.contain
 }
 
 dependencies {
-    compile 'io.wisetime:wisetime-connector:2.2.4'
+    compile 'io.wisetime:wisetime-connector:2.2.5-2'
 
     compile('com.google.inject:guice:4.2.2:no_aop') {
         exclude group: 'com.google.guava', module: 'guava'
