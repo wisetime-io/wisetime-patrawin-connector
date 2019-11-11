@@ -30,7 +30,7 @@ public class FakeCaseClientGenerator {
 
   public Case randomCase(LocalDateTime createdTime) {
     return ImmutableCase.builder()
-        .caseNumber(FAKER.bothify("??####", true))
+        .number(FAKER.bothify("??####", true))
         .description(FAKER.lorem().characters(12, 30))
         .creationTime(createdTime)
         .build();
@@ -46,7 +46,7 @@ public class FakeCaseClientGenerator {
 
   public Client randomClient(LocalDateTime createdTime) {
     return ImmutableClient.builder()
-        .clientNumber(FAKER.bothify("??###", true))
+        .number(FAKER.bothify("??###", true))
         .alias(FAKER.company().name())
         .creationTime(createdTime)
         .build();
