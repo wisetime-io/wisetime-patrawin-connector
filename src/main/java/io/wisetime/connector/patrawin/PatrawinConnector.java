@@ -258,6 +258,11 @@ public class PatrawinConnector implements WiseTimeConnector {
                       timeGroup.getGroupId(), caseOrClientNumber)
               )
       );
+    } catch (CaseNotFoundException e) {
+      log.warn("Can't post time to the Inprotech database: " + e.getMessage());
+      return PostResult.PERMANENT_FAILURE()
+          .withError(e)
+          .withMessage(e.getMessage());
     } catch (IllegalStateException ex) {
       // Thrown if Patrawin has rejected the posted time
       return PostResult.PERMANENT_FAILURE()
@@ -277,12 +282,16 @@ public class PatrawinConnector implements WiseTimeConnector {
    * checks if posting time to this case or client can proceed.
    */
   private final Function<Tag, Optional<String>> findCaseOrClientNumber = tag -> {
+    if (!createdByConnector(tag)) {
+      log.warn("The Patrawin connector is not configured to handle this tag: {}. No time will be posted for this tag.",
+          tag.getName());
+      return Optional.empty();
+    }
     final String id = tag.getName();
     if (patrawinDao.doesCaseExist(id) || patrawinDao.doesClientExist(id)) {
       return Optional.of(id);
     }
-    log.warn("Can't find Patrawin case or client for tag {}. No time will be posted for this tag.", tag.getName());
-    return Optional.empty();
+    throw new CaseNotFoundException("Can't find Patrawin case for tag " + tag.getName());
   };
 
   @VisibleForTesting
@@ -345,5 +354,16 @@ public class PatrawinConnector implements WiseTimeConnector {
   @Override
   public void shutdown() {
     patrawinDao.shutdown();
+  }
+
+  private boolean createdByConnector(Tag tag) {
+    return tag.getPath().equals(tagUpsertPath() + tag.getName()) ||
+        tag.getPath().equals(StringUtils.strip(tagUpsertPath(), "/"));
+  }
+
+  private static class CaseNotFoundException extends RuntimeException {
+    CaseNotFoundException(String message) {
+      super(message);
+    }
   }
 }
