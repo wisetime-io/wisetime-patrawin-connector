@@ -196,6 +196,13 @@ class SyncStoreTest {
     assertThat(values.get(1)).isEqualTo("2@@3");
   }
 
+  @Test
+  void clearLastRefreshedCases() {
+    syncStore.clearLastRefreshedCases();
+    verify(connectorStore, times(1)).putString("printLast-refreshed-case-creation-time", "");
+    verify(connectorStore, times(1)).putString("printLast-refreshed-case-numbers-csv", "");
+  }
+
   // Clients:
 
   @Test
@@ -352,5 +359,12 @@ class SyncStoreTest {
     assertThat(values.get(0)).isEqualTo(later.toString());
     assertThat(keys.get(1)).isEqualTo("printLast-refreshed-client-numbers-csv");
     assertThat(values.get(1)).isEqualTo("2");
+  }
+
+  @Test
+  void clearLastRefreshedClients() {
+    syncStore.clearLastRefreshedClients();
+    verify(connectorStore, times(1)).putString("printLast-refreshed-client-creation-time", "");
+    verify(connectorStore, times(1)).putString("printLast-refreshed-client-numbers-csv", "");
   }
 }
