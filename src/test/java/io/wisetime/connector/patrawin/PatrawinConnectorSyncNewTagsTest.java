@@ -52,7 +52,7 @@ import static org.mockito.Mockito.when;
  * @author shane.xie@practiceinsight.io
  * @author galya.bogdanova@m.practiceinsight.io
  */
-class PatrawinConnectorPerformTagUpdateTest {
+class PatrawinConnectorSyncNewTagsTest {
 
   private static final String TAG_UPSERT_PATH = "/test/path/";
 
@@ -104,8 +104,8 @@ class PatrawinConnectorPerformTagUpdateTest {
 
     connector.performTagUpdate();
 
-    verify(connector, times(2)).syncCases();
-    verify(connector, times(2)).syncClients();
+    verify(connector, times(2)).syncNewCases();
+    verify(connector, times(2)).syncNewClients();
   }
 
   @Test
@@ -113,7 +113,7 @@ class PatrawinConnectorPerformTagUpdateTest {
     when(patrawinDao.findCasesOrderedByCreationTime(any(), anyList(), anyInt()))
         .thenReturn(ImmutableList.of());
 
-    connector.syncCases();
+    connector.syncNewCases();
 
     verify(apiClient, never()).tagUpsertBatch(anyList());
     verify(syncStore, never()).setLastSyncedCases(anyList());
@@ -129,7 +129,7 @@ class PatrawinConnectorPerformTagUpdateTest {
         .when(apiClient)
         .tagUpsertBatch(anyList());
 
-    assertThatThrownBy(() -> connector.syncCases())
+    assertThatThrownBy(() -> connector.syncNewCases())
         .isInstanceOf(RuntimeException.class)
         .hasCause(apiException);
 
@@ -158,7 +158,7 @@ class PatrawinConnectorPerformTagUpdateTest {
         lastSyncedCaseNumbersCaptor.capture(), anyInt()))
         .thenReturn(ImmutableList.of(case1, case2));
 
-    connector.syncCases();
+    connector.syncNewCases();
 
     assertThat(lastSyncedCaseCreationTimeCaptor.getValue())
         .contains(lastSyncedCaseCreationTime);
@@ -172,14 +172,14 @@ class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequestsCaptor.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(case1.getCaseNumber())
+                .name(case1.getNumber())
                 .description(case1.getDescription())
-                .additionalKeywords(ImmutableList.of(case1.getCaseNumber()))
+                .additionalKeywords(ImmutableList.of(case1.getNumber()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(case2.getCaseNumber())
+                .name(case2.getNumber())
                 .description(case2.getDescription())
-                .additionalKeywords(ImmutableList.of(case2.getCaseNumber()))
+                .additionalKeywords(ImmutableList.of(case2.getNumber()))
                 .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Case>> storeCasesCaptor = ArgumentCaptor.forClass(List.class);
@@ -194,7 +194,7 @@ class PatrawinConnectorPerformTagUpdateTest {
     when(patrawinDao.findClientsOrderedByCreationTime(any(), anyList(), anyInt()))
         .thenReturn(ImmutableList.of());
 
-    connector.syncClients();
+    connector.syncNewClients();
 
     verify(apiClient, never()).tagUpsertBatch(anyList());
     verify(syncStore, never()).setLastSyncedClients(anyList());
@@ -210,7 +210,7 @@ class PatrawinConnectorPerformTagUpdateTest {
         .when(apiClient)
         .tagUpsertBatch(anyList());
 
-    assertThatThrownBy(() -> connector.syncClients())
+    assertThatThrownBy(() -> connector.syncNewClients())
         .isInstanceOf(RuntimeException.class)
         .hasCause(apiException);
 
@@ -239,7 +239,7 @@ class PatrawinConnectorPerformTagUpdateTest {
         lastSyncedClientsNumbersCaptor.capture(), anyInt()))
         .thenReturn(ImmutableList.of(client1, client2));
 
-    connector.syncClients();
+    connector.syncNewClients();
 
     assertThat(lastSyncedClientsCreationTimeCaptor.getValue())
         .contains(lastSyncedClientCreationTime);
@@ -253,14 +253,14 @@ class PatrawinConnectorPerformTagUpdateTest {
     assertThat(upsertRequests.getValue())
         .containsExactly(
             new UpsertTagRequest()
-                .name(client1.clientNumber())
+                .name(client1.getNumber())
                 .description(client1.getAlias())
-                .additionalKeywords(ImmutableList.of(client1.clientNumber()))
+                .additionalKeywords(ImmutableList.of(client1.getNumber()))
                 .path(TAG_UPSERT_PATH),
             new UpsertTagRequest()
-                .name(client2.clientNumber())
+                .name(client2.getNumber())
                 .description(client2.getAlias())
-                .additionalKeywords(ImmutableList.of(client2.clientNumber()))
+                .additionalKeywords(ImmutableList.of(client2.getNumber()))
                 .path(TAG_UPSERT_PATH));
 
     ArgumentCaptor<List<Client>> storeClientsCaptor = ArgumentCaptor.forClass(List.class);

@@ -106,11 +106,18 @@ public class PatrawinDao {
       selectQuery.namedParam("excludedCaseNumbers", excludedCaseNumbers);
     }
     return selectQuery.listResult(rs -> ImmutableCase.builder()
-        .caseNumber(rs.getString(1))
+        .number(rs.getString(1))
         .description(StringUtils.trimToEmpty(rs.getString(2)))
         .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
     );
+  }
+
+  public long casesCount() {
+    String query = "SELECT COUNT(*) FROM " + TABLE_NAME_CASE;
+    return query().select(query)
+        .firstResult(Mappers.singleLong())
+        .orElse(0L);
   }
 
   /**
@@ -142,11 +149,18 @@ public class PatrawinDao {
       selectQuery.namedParam("excludedClientNumbers", excludedClientNumbers);
     }
     return selectQuery.listResult(rs -> ImmutableClient.builder()
-        .clientNumber(rs.getString(1))
+        .number(rs.getString(1))
         .alias(StringUtils.trimToEmpty(rs.getString(2)))
         .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
         .build()
     );
+  }
+
+  public long clientsCount() {
+    String query = "SELECT COUNT(*) FROM " + TABLE_NAME_CLIENT;
+    return query().select(query)
+        .firstResult(Mappers.singleLong())
+        .orElse(0L);
   }
 
   public boolean doesUserExist(String usernameOrEmail) {
