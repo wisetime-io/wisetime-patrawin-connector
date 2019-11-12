@@ -611,7 +611,7 @@ class PatrawinConnectorPostTimeTest {
   }
 
   @Test
-  void postTime_post_time_not_successful_incorrect_path() {
+  void postTime_post_time_not_successful_tag_not_found_in_patrawin_db() {
     Tag tag = fakeGenerator.randomTag("/Patrawin/", "non_existing_tag");
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .totalDurationSecs(1000)
