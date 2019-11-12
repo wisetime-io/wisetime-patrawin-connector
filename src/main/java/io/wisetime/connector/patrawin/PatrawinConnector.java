@@ -259,7 +259,7 @@ public class PatrawinConnector implements WiseTimeConnector {
               )
       );
     } catch (CaseNotFoundException e) {
-      log.warn("Can't post time to the Inprotech database: " + e.getMessage());
+      log.warn("Can't post time to the Patrawin database: " + e.getMessage());
       return PostResult.PERMANENT_FAILURE()
           .withError(e)
           .withMessage(e.getMessage());
