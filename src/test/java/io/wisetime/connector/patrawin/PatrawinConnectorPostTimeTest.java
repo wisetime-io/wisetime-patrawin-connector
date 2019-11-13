@@ -631,6 +631,20 @@ class PatrawinConnectorPostTimeTest {
         .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
   }
 
+  @Test
+  void postTime_post_time_successful_tag_not_patrawin() {
+    Tag tag = fakeGenerator.randomTag("/NonPatrawin/", "non_existing_tag");
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
+        .totalDurationSecs(1000)
+        .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
+        .tags(ImmutableList.of(tag));
+    final PostResult result = connector.postTime(mock(Request.class), timeGroup);
+
+    assertThat(result.getStatus())
+        .as("should return success for non-Patrawin tag")
+        .isEqualTo(PostResultStatus.SUCCESS);
+  }
+
 
   private void setPrerequisitesForSuccessfulPostTime(User user, List<Tag> tags) {
     when(patrawinDaoMock.doesUserExist(user.getExternalId()))
