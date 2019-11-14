@@ -62,6 +62,13 @@ public class FakeTimeGroupGenerator {
         .description(FAKER.lorem().characters(30, 200));
   }
 
+  public Tag randomTag(final String tagUpsertPath, String name) {
+    return new Tag()
+        .path(tagUpsertPath + name)
+        .name(name)
+        .description(FAKER.lorem().characters(30, 200));
+  }
+
   public User randomUser() {
     final String firstName = FAKER.name().firstName();
     final String lastName = FAKER.name().lastName();

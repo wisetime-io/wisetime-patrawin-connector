@@ -8,6 +8,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.Guice;
 import com.google.inject.Injector;
 
+import io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,6 +57,8 @@ import static org.mockito.Mockito.when;
  */
 class PatrawinConnectorPostTimeTest {
 
+  private static final String TAG_UPSERT_PATH = "/Patrawin/";
+
   private static final String DEFAULT_ACTIVITY_CODE = "123456";
   private static final String NON_NUMERIC_ACTIVITY_CODE = "onetwothree";
 
@@ -67,6 +70,8 @@ class PatrawinConnectorPostTimeTest {
 
   @BeforeAll
   static void setUp() {
+    RuntimeConfig.setProperty(PatrawinConnectorConfigKey.TAG_UPSERT_PATH, TAG_UPSERT_PATH);
+
     Injector injector = Guice.createInjector(binder -> {
       binder.bind(PatrawinDao.class).toProvider(() -> patrawinDaoMock);
       binder.bind(TimeDbFormatter.class).toInstance(new MsSqlTimeDbFormatter());
@@ -219,7 +224,8 @@ class PatrawinConnectorPostTimeTest {
 
   @Test
   void postTime_db_transaction_error() {
-    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE);
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
+        .tags(ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag")));
 
     RuntimeException createWorklogException = new RuntimeException("Test exception");
     doThrow(createWorklogException)
@@ -252,21 +258,15 @@ class PatrawinConnectorPostTimeTest {
    */
   @Test
   void postTime_create_worklog_for_each_valid_tag() {
-    final Tag existentCaseTag = fakeGenerator.randomTag();
-    final Tag nonexistentCaseOrClientTag = fakeGenerator.randomTag();
-    final Tag existentClientTag = fakeGenerator.randomTag();
+    final Tag existentCaseTag = fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag1");
+    final Tag existentClientTag = fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag2");
 
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
-        .tags(Arrays.asList(existentCaseTag, nonexistentCaseOrClientTag, existentClientTag));
+        .tags(Arrays.asList(existentCaseTag, existentClientTag));
 
     when(patrawinDaoMock.doesCaseExist(existentCaseTag.getName()))
         .thenReturn(true);
-    when(patrawinDaoMock.doesCaseExist(nonexistentCaseOrClientTag.getName()))
-        .thenReturn(false);
     when(patrawinDaoMock.doesCaseExist(existentClientTag.getName()))
-        .thenReturn(false);
-
-    when(patrawinDaoMock.doesClientExist(nonexistentCaseOrClientTag.getName()))
         .thenReturn(false);
     when(patrawinDaoMock.doesClientExist(existentClientTag.getName()))
         .thenReturn(true);
@@ -274,8 +274,8 @@ class PatrawinConnectorPostTimeTest {
     assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
         .isEqualTo(PostResultStatus.SUCCESS);
 
-    verify(patrawinDaoMock, times(3)).doesCaseExist(anyString());
-    verify(patrawinDaoMock, times(2)).doesClientExist(anyString());
+    verify(patrawinDaoMock, times(2)).doesCaseExist(anyString());
+    verify(patrawinDaoMock, times(1)).doesClientExist(anyString());
 
     ArgumentCaptor<Worklog> worklogCaptor = ArgumentCaptor.forClass(Worklog.class);
     verify(patrawinDaoMock, times(2)).createWorklog(worklogCaptor.capture());
@@ -295,7 +295,7 @@ class PatrawinConnectorPostTimeTest {
     final String userExternalId = "ExternalId";
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .user(fakeGenerator.randomUser().externalId(userExternalId))
-        .tags(ImmutableList.of(fakeGenerator.randomTag()));
+        .tags(ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag")));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
         .isEqualTo(PostResultStatus.SUCCESS);
@@ -317,7 +317,9 @@ class PatrawinConnectorPostTimeTest {
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
         .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
-    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag1"),
+        fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag2")
+    );
 
     setPrerequisitesForSuccessfulPostTime(user, tags);
 
@@ -362,7 +364,7 @@ class PatrawinConnectorPostTimeTest {
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
         .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
-    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag());
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag"));
 
     setPrerequisitesForSuccessfulPostTime(user, tags);
 
@@ -403,7 +405,9 @@ class PatrawinConnectorPostTimeTest {
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
         .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
-    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag1"),
+        fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag2")
+    );
 
     setPrerequisitesForSuccessfulPostTime(user, tags);
 
@@ -446,7 +450,9 @@ class PatrawinConnectorPostTimeTest {
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
         .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
-    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag1"),
+        fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag2")
+    );
 
     setPrerequisitesForSuccessfulPostTime(user, tags);
 
@@ -486,7 +492,9 @@ class PatrawinConnectorPostTimeTest {
     final TimeRow latestTimeRow = fakeGenerator.randomTimeRow()
         .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110110).firstObservedInHour(2).durationSecs(2400);
 
-    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag());
+    List<Tag> tags = ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag1"),
+        fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag2")
+    );
 
     setPrerequisitesForSuccessfulPostTime(user, tags);
 
@@ -524,7 +532,7 @@ class PatrawinConnectorPostTimeTest {
                 .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110115).firstObservedInHour(0),
             fakeGenerator.randomTimeRow()
                 .activityTypeCode(DEFAULT_ACTIVITY_CODE).activityHour(2018110114).firstObservedInHour(0)))
-        .tags(ImmutableList.of(fakeGenerator.randomTag()));
+        .tags(ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag")));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
         .isEqualTo(PostResultStatus.SUCCESS);
@@ -549,7 +557,9 @@ class PatrawinConnectorPostTimeTest {
             fakeGenerator.randomTimeRow().activityTypeCode(DEFAULT_ACTIVITY_CODE).durationSecs(8 * 60)))
         .totalDurationSecs(20 * 60)
         .durationSplitStrategy(TimeGroup.DurationSplitStrategyEnum.DIVIDE_BETWEEN_TAGS)
-        .tags(ImmutableList.of(fakeGenerator.randomTag(), fakeGenerator.randomTag()));
+        .tags(ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag1"),
+            fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag2"))
+        );
 
     assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
         .isEqualTo(PostResultStatus.SUCCESS);
@@ -572,7 +582,8 @@ class PatrawinConnectorPostTimeTest {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .totalDurationSecs(1000)
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
-        .tags(ImmutableList.of(fakeGenerator.randomTag())); // getPerTagDuration ?? strategy
+        // getPerTagDuration ?? strategy
+        .tags(ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag")));
 
     assertThat(connector.postTime(mock(Request.class), timeGroup).getStatus())
         .isEqualTo(PostResultStatus.SUCCESS);
@@ -590,7 +601,7 @@ class PatrawinConnectorPostTimeTest {
     final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
         .totalDurationSecs(1000)
         .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
-        .tags(ImmutableList.of(fakeGenerator.randomTag()));
+        .tags(ImmutableList.of(fakeGenerator.randomTag(TAG_UPSERT_PATH, "tag")));
     doThrow(new IllegalStateException("Detailed error message why posting time failed"))
         .when(patrawinDaoMock).createWorklog(any());
 
@@ -603,6 +614,37 @@ class PatrawinConnectorPostTimeTest {
         .as("reason for failure should be the msg of the IllegalStateException")
         .contains("Detailed error message why posting time failed");
   }
+
+  @Test
+  void postTime_post_time_not_successful_tag_not_found_in_patrawin_db() {
+    Tag tag = fakeGenerator.randomTag(TAG_UPSERT_PATH, "non_existing_tag");
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
+        .totalDurationSecs(1000)
+        .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
+        .tags(ImmutableList.of(tag));
+    when(patrawinDaoMock.doesCaseExist(tag.getName()))
+        .thenReturn(false);
+    final PostResult result = connector.postTime(mock(Request.class), timeGroup);
+
+    assertThat(result.getStatus())
+        .as("should return permanent failure if Patrawin rejected the posted time")
+        .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
+  }
+
+  @Test
+  void postTime_post_time_successful_tag_not_patrawin() {
+    Tag tag = fakeGenerator.randomTag("/NonPatrawin/", "non_existing_tag");
+    final TimeGroup timeGroup = fakeGenerator.randomTimeGroup(DEFAULT_ACTIVITY_CODE)
+        .totalDurationSecs(1000)
+        .user(fakeGenerator.randomUser().experienceWeightingPercent(40))
+        .tags(ImmutableList.of(tag));
+    final PostResult result = connector.postTime(mock(Request.class), timeGroup);
+
+    assertThat(result.getStatus())
+        .as("should return success for non-Patrawin tag")
+        .isEqualTo(PostResultStatus.SUCCESS);
+  }
+
 
   private void setPrerequisitesForSuccessfulPostTime(User user, List<Tag> tags) {
     when(patrawinDaoMock.doesUserExist(user.getExternalId()))
