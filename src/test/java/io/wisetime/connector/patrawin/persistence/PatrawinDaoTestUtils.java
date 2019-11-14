@@ -64,7 +64,7 @@ public class PatrawinDaoTestUtils {
         .update("INSERT INTO ARENDE_1 (Arendenr, Slagord, Skapatdat, Rowguid, Officeid, Electronic_file, " +
             "Excludedfromiprcontrol, Outsourced) VALUES (?, ?, ?, NEWID(), 1, 1, 0, 0)")
         .params(
-            patrawinCase.getCaseNumber(),
+            patrawinCase.getNumber(),
             patrawinCase.getDescription(),
             timeDbFormatter.format(patrawinCase.getCreationTime()))
         .run();
@@ -74,9 +74,9 @@ public class PatrawinDaoTestUtils {
     // Let's query the created case so we can have reference to the actual created date
     return fluentJdbc.query()
         .select("SELECT Arendenr, Slagord, Skapatdat FROM ARENDE_1 WHERE Arendenr = ?")
-        .params(patrawinCase.getCaseNumber())
+        .params(patrawinCase.getNumber())
         .singleResult(rs -> ImmutableCase.builder()
-            .caseNumber(rs.getString(1))
+            .number(rs.getString(1))
             .description(rs.getString(2))
             .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
             .build());
@@ -93,7 +93,7 @@ public class PatrawinDaoTestUtils {
             "Einvoiceaccent, Enableipforecaster, Automatfakturajn, Usebasicoutsourcingsurcharge, IsAgentInFile, Kreditjn) " +
             "VALUES (?, ?, ?, 'N', 'N', 'N', NEWID(), 0, 0, 0, 0, 'N', 0, 0, ?)")
         .params(
-            client.clientNumber(),
+            client.getNumber(),
             client.getAlias(),
             timeDbFormatter.format(client.getCreationTime()),
             creditCode)
@@ -104,9 +104,9 @@ public class PatrawinDaoTestUtils {
     // Let's query the created case so we can have reference to the actual created date
     return fluentJdbc.query()
         .select("SELECT Kundnr, Kortnamnkund, Skapatdat FROM KUND_24 WHERE Kundnr = ?")
-        .params(client.clientNumber())
+        .params(client.getNumber())
         .singleResult(rs -> ImmutableClient.builder()
-            .clientNumber(rs.getString(1))
+            .number(rs.getString(1))
             .alias(rs.getString(2))
             .creationTime(timeDbFormatter.parseDateTime(rs.getString(3)))
             .build());
@@ -131,7 +131,7 @@ public class PatrawinDaoTestUtils {
 
     fluentJdbc.query()
         .update("INSERT INTO KUND_ARENDE_25 (Arendenr, Kundnr, Part, Kundtyp) VALUES (?, ?, 1, 2)")
-        .params(patrawinCase.getCaseNumber(), client.clientNumber())
+        .params(patrawinCase.getNumber(), client.getNumber())
         .run();
   }
 

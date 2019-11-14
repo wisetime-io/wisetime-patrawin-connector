@@ -17,6 +17,7 @@ import io.wisetime.connector.config.ConnectorConfigKey;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
+import io.wisetime.connector.patrawin.model.BaseModel;
 import io.wisetime.connector.patrawin.model.Case;
 import io.wisetime.connector.patrawin.model.Client;
 import io.wisetime.connector.patrawin.model.ImmutableWorklog;
@@ -37,7 +38,9 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -53,6 +56,8 @@ import spark.Request;
 public class PatrawinConnector implements WiseTimeConnector {
 
   private static final Logger log = LoggerFactory.getLogger(PatrawinConnector.class);
+
+  private Supplier<Integer> tagSyncIntervalMinutes;
   private ApiClient apiClient;
   private SyncStore syncStore;
   private TemplateFormatter narrativeFormatter;
@@ -65,18 +70,19 @@ public class PatrawinConnector implements WiseTimeConnector {
     Preconditions.checkArgument(patrawinDao.hasExpectedSchema(),
         "Patrawin database schema is unsupported by this connector");
 
-    this.apiClient = connectorModule.getApiClient();
-    this.syncStore = createSyncStore(connectorModule.getConnectorStore());
+    tagSyncIntervalMinutes = connectorModule::getTagSyncIntervalMinutes;
+    apiClient = connectorModule.getApiClient();
+    syncStore = createSyncStore(connectorModule.getConnectorStore());
     // default to no summary
     if (RuntimeConfig.getBoolean(PatrawinConnectorConfigKey.ADD_SUMMARY_TO_NARRATIVE).orElse(false)) {
-      this.narrativeFormatter = new TemplateFormatter(
+      narrativeFormatter = new TemplateFormatter(
           TemplateFormatterConfig.builder()
               .withTemplatePath("classpath:timegroup-narrative-template.ftl")
               .withWindowsClr(true)
               .build()
       );
     } else {
-      this.narrativeFormatter = new TemplateFormatter(
+      narrativeFormatter = new TemplateFormatter(
           TemplateFormatterConfig.builder()
               .withTemplatePath("classpath:timegroup-narrative-template_no-summary.ftl")
               .withWindowsClr(true)
@@ -100,18 +106,30 @@ public class PatrawinConnector implements WiseTimeConnector {
     return patrawinDao.canQueryDb();
   }
 
+  /**
+   * Called by the WiseTime Connector library on a regular schedule.
+   *
+   * 1. Finds all Patrawin cases and clients that haven't been synced and creates matching tags for them in WiseTime.
+   * Blocks until all cases and clients have been synced.
+   *
+   * 2. Sends a batch of already synced cases and clients to WiseTime to maintain freshness of existing tags. Mitigates
+   * effect of renamed or missed tags. Only one refresh batch per performTagUpdate() call.
+   */
   @Override
   public void performTagUpdate() {
-    while (syncCases()) {
+    while (syncNewCases()) {
       // Drain all unsynced cases
     }
-    while (syncClients()) {
+    while (syncNewClients()) {
       // Drain all unsynced clients
     }
+
+    refreshCases(casesTagRefreshBatchSize());
+    refreshClients(clientsTagRefreshBatchSize());
   }
 
   @VisibleForTesting
-  boolean syncCases() {
+  boolean syncNewCases() {
     final Optional<LocalDateTime> lastPreviouslySyncedCaseCreationTime = syncStore.getLastSyncedCaseCreationTime();
     final List<String> lastPreviouslySyncedCaseNumbers = syncStore.getLastSyncedCaseNumbers();
     final List<Case> cases = patrawinDao.findCasesOrderedByCreationTime(
@@ -120,37 +138,27 @@ public class PatrawinConnector implements WiseTimeConnector {
         tagUpsertBatchSize());
 
     if (cases.isEmpty()) {
-      log.info("No new case tags found. Last case number previously synced: {}", printLast(lastPreviouslySyncedCaseNumbers));
+      log.info("No new case tags found. Last case number previously synced: {}",
+          printLast(lastPreviouslySyncedCaseNumbers));
       return false;
-    } else {
-      try {
-        log.info("Detected {} new {}: {}",
-            cases.size(),
-            cases.size() > 1 ? "cases" : "case",
-            cases.stream().map(Case::getCaseNumber).collect(Collectors.joining(", ")));
-
-        final List<UpsertTagRequest> upsertRequests = cases
-            .stream()
-            .map(i -> i.toUpsertTagRequest(tagUpsertPath()))
-            .collect(Collectors.toList());
-
-        apiClient.tagUpsertBatch(upsertRequests);
-
-        syncStore.setLastSyncedCases(cases);
-        log.info("Last synced case: {}", printLast(cases));
-        return true;
-
-      } catch (IOException e) {
-        // The batch will be retried since we didn't update the last synced cases
-        // Let scheduler know that this batch has failed
-        throw new RuntimeException(e);
-      }
     }
+
+    log.info("Detected {} new {}: {}",
+        cases.size(),
+        cases.size() > 1 ? "cases" : "case",
+        cases.stream().map(Case::getNumber).collect(Collectors.joining(", ")));
+
+    upsertWiseTimeTags(cases);
+
+    syncStore.setLastSyncedCases(cases);
+    log.info("Last synced case: {}", printLast(cases));
+    return true;
   }
 
   @VisibleForTesting
-  boolean syncClients() {
-    final Optional<LocalDateTime> lastPreviouslySyncedClientCreationTime = syncStore.getLastSyncedClientCreationTime();
+  boolean syncNewClients() {
+    final Optional<LocalDateTime> lastPreviouslySyncedClientCreationTime = syncStore
+        .getLastSyncedClientCreationTime();
     final List<String> lastPreviouslySyncedClientNumbers = syncStore.getLastSyncedClientNumbers();
     final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
         lastPreviouslySyncedClientCreationTime,
@@ -161,29 +169,83 @@ public class PatrawinConnector implements WiseTimeConnector {
       log.info("No new client tags found. Last client ID previously synced: {}",
           printLast(lastPreviouslySyncedClientNumbers));
       return false;
-    } else {
-      try {
-        log.info("Detected {} new {}: {}",
-            clients.size(),
-            clients.size() > 1 ? "clients" : "client",
-            clients.stream().map(Client::clientNumber).collect(Collectors.joining(", ")));
+    }
 
-        final List<UpsertTagRequest> upsertRequests = clients
-            .stream()
-            .map(i -> i.toUpsertTagRequest(tagUpsertPath()))
-            .collect(Collectors.toList());
+    log.info("Detected {} new {}: {}",
+        clients.size(),
+        clients.size() > 1 ? "clients" : "client",
+        clients.stream().map(Client::getNumber).collect(Collectors.joining(", ")));
 
-        apiClient.tagUpsertBatch(upsertRequests);
+    upsertWiseTimeTags(clients);
 
-        syncStore.setLastSyncedClients(clients);
-        log.info("Last synced client: {}", printLast(clients));
-        return true;
+    syncStore.setLastSyncedClients(clients);
+    log.info("Last synced client: {}", printLast(clients));
+    return true;
+  }
 
-      } catch (IOException e) {
-        // The batch will be retried since we didn't update the last synced clients
-        // Let scheduler know that this batch has failed
-        throw new RuntimeException(e);
-      }
+  @VisibleForTesting
+  void refreshCases(final int batchSize) {
+    final Optional<LocalDateTime> lastPreviouslyRefreshedCaseCreationTime = syncStore
+        .getLastRefreshedCaseCreationTime();
+    final List<String> lastPreviouslyRefreshedCaseNumbers = syncStore.getLastRefreshedCaseNumbers();
+    final List<Case> cases = patrawinDao.findCasesOrderedByCreationTime(
+        lastPreviouslyRefreshedCaseCreationTime,
+        lastPreviouslyRefreshedCaseNumbers,
+        batchSize);
+
+    if (cases.isEmpty()) {
+      // Start over the next time we are called
+      syncStore.clearLastRefreshedCases();
+      return;
+    }
+
+    log.info("Refreshing {} {}: {}",
+        cases.size(),
+        cases.size() > 1 ? "cases" : "case",
+        cases.stream().map(Case::getNumber).collect(Collectors.joining(", ")));
+
+    upsertWiseTimeTags(cases);
+
+    syncStore.setLastRefreshedCases(cases);
+    log.info("Last refreshed case: {}", printLast(cases));
+  }
+
+  @VisibleForTesting
+  void refreshClients(final int batchSize) {
+    final Optional<LocalDateTime> lastPreviouslyRefreshedClientCreationTime = syncStore
+        .getLastRefreshedClientCreationTime();
+    final List<String> lastPreviouslyRefreshedClientNumbers = syncStore.getLastRefreshedClientNumbers();
+    final List<Client> clients = patrawinDao.findClientsOrderedByCreationTime(
+        lastPreviouslyRefreshedClientCreationTime,
+        lastPreviouslyRefreshedClientNumbers,
+        batchSize);
+
+    if (clients.isEmpty()) {
+      // Start over the next time we are called
+      syncStore.clearLastRefreshedClients();
+      return;
+    }
+
+    log.info("Refreshing {} {}: {}",
+        clients.size(),
+        clients.size() > 1 ? "clients" : "client",
+        clients.stream().map(Client::getNumber).collect(Collectors.joining(", ")));
+
+    upsertWiseTimeTags(clients);
+
+    syncStore.setLastRefreshedClients(clients);
+    log.info("Last refreshed client: {}", printLast(clients));
+  }
+
+  private void upsertWiseTimeTags(final List<? extends BaseModel> models) {
+    try {
+      final List<UpsertTagRequest> upsertRequests = models
+          .stream()
+          .map(i -> i.toUpsertTagRequest(tagUpsertPath()))
+          .collect(Collectors.toList());
+      apiClient.tagUpsertBatch(upsertRequests);
+    } catch (IOException e) {
+      throw new RuntimeException(e);
     }
   }
 
@@ -277,9 +339,9 @@ public class PatrawinConnector implements WiseTimeConnector {
   }
 
   /**
-   * Determines if the tag is an existing case or client in Patrawin.
-   * Note that even a case or client is existing, the stored procedure `pw_PostTime` for posting time has additional
-   * checks if posting time to this case or client can proceed.
+   * Determines if the tag is an existing case or client in Patrawin. Note that even a case or client is existing, the
+   * stored procedure `pw_PostTime` for posting time has additional checks if posting time to this case or client can
+   * proceed.
    */
   private final Function<Tag, Optional<String>> findCaseOrClientNumber = tag -> {
     if (!createdByConnector(tag)) {
@@ -306,6 +368,29 @@ public class PatrawinConnector implements WiseTimeConnector {
         .getInt(PatrawinConnectorConfigKey.TAG_UPSERT_BATCH_SIZE)
         // A large batch mitigates query round trip latency
         .orElse(200);
+  }
+
+  @VisibleForTesting
+  int casesTagRefreshBatchSize() {
+    return tagRefreshBatchSize(patrawinDao.casesCount());
+  }
+
+  @VisibleForTesting
+  int clientsTagRefreshBatchSize() {
+    return tagRefreshBatchSize(patrawinDao.clientsCount());
+  }
+
+  private int tagRefreshBatchSize(long tagCount) {
+    final long batchFullFortnightlyRefresh = tagCount / (TimeUnit.DAYS.toMinutes(14) / tagSyncIntervalMinutes.get());
+
+    if (batchFullFortnightlyRefresh > tagUpsertBatchSize()) {
+      return tagUpsertBatchSize();
+    }
+    final int minimumBatchSize = 10;
+    if (batchFullFortnightlyRefresh < minimumBatchSize) {
+      return minimumBatchSize;
+    }
+    return (int) batchFullFortnightlyRefresh;
   }
 
   private String tagUpsertPath() {

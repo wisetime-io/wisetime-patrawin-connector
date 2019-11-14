@@ -113,6 +113,34 @@ class PatrawinDaoTest {
   }
 
   @Test
+  void casesCount() {
+    assertThat(patrawinDao.casesCount())
+        .as("No cases have been saved yet")
+        .isEqualTo(0);
+
+    fakeCaseClientGenerator.randomCases(3)
+        .forEach(patrawinDaoTestUtils::createCase);
+
+    assertThat(patrawinDao.casesCount())
+        .as("Should return the number of all saved cases")
+        .isEqualTo(3);
+  }
+
+  @Test
+  void clientsCount() {
+    assertThat(patrawinDao.clientsCount())
+        .as("No clients have been saved yet")
+        .isEqualTo(0);
+
+    fakeCaseClientGenerator.randomClients(5)
+        .forEach(patrawinDaoTestUtils::createClient);
+
+    assertThat(patrawinDao.clientsCount())
+        .as("Should return the number of all saved clients")
+        .isEqualTo(5);
+  }
+
+  @Test
   void doesUserExist() {
     final User user = fakeTimeGroupGenerator.randomUser();
 
@@ -132,7 +160,7 @@ class PatrawinDaoTest {
     final Case aCase = fakeCaseClientGenerator.randomCase();
     assertThat(patrawinDaoTestUtils.createCase(aCase))
         .isNotNull();
-    assertThat(patrawinDao.doesCaseExist(aCase.getCaseNumber()))
+    assertThat(patrawinDao.doesCaseExist(aCase.getNumber()))
         .isTrue();
   }
 
@@ -141,7 +169,7 @@ class PatrawinDaoTest {
     final Client client = fakeCaseClientGenerator.randomClient();
     assertThat(patrawinDaoTestUtils.createClient(client))
         .isNotNull();
-    assertThat(patrawinDao.doesClientExist(client.clientNumber()))
+    assertThat(patrawinDao.doesClientExist(client.getNumber()))
         .isTrue();
   }
 
@@ -171,7 +199,7 @@ class PatrawinDaoTest {
         .isTrue();
 
     final Worklog worklog = ImmutableWorklog.builder()
-        .caseOrClientNumber(client.clientNumber())
+        .caseOrClientNumber(client.getNumber())
         .usernameOrEmail(user.getExternalId())
         .activityCode(activityCode)
         .narrative(faker.shakespeare().asYouLikeItQuote())
@@ -182,7 +210,7 @@ class PatrawinDaoTest {
 
     patrawinDao.createWorklog(worklog);
 
-    final PendingTime pendingTime = patrawinDaoTestUtils.getCreatedPendingTime(client.clientNumber());
+    final PendingTime pendingTime = patrawinDaoTestUtils.getCreatedPendingTime(client.getNumber());
     assertThat(pendingTime.getUserId())
         .as("the user id of the provided username or email")
         .isEqualTo(userId);
@@ -220,7 +248,7 @@ class PatrawinDaoTest {
         .isTrue();
 
     final Worklog worklog = ImmutableWorklog.builder()
-        .caseOrClientNumber(aCase.getCaseNumber())
+        .caseOrClientNumber(aCase.getNumber())
         .usernameOrEmail(user.getExternalId())
         .activityCode(activityCode)
         .narrative(faker.shakespeare().asYouLikeItQuote())
@@ -231,7 +259,7 @@ class PatrawinDaoTest {
 
     patrawinDao.createWorklog(worklog);
 
-    final PendingTime pendingTime = patrawinDaoTestUtils.getCreatedPendingTime(client.clientNumber());
+    final PendingTime pendingTime = patrawinDaoTestUtils.getCreatedPendingTime(client.getNumber());
     assertThat(pendingTime.getUserId())
         .as("the user id of the provided username or email")
         .isEqualTo(userId);
@@ -240,7 +268,7 @@ class PatrawinDaoTest {
         .isEqualTo(worklog.getCaseOrClientNumber());
     assertThat(pendingTime.getClientNum())
         .as("should use client number associated to the case")
-        .isEqualTo(client.clientNumber());
+        .isEqualTo(client.getNumber());
     assertThat(timeDbFormatter.parseOffsetDateTime(pendingTime.getStartTimeUtc() + " Z"))
         .as("should used correct start time in UTC")
         .isEqualTo(worklog.getStartTime());
@@ -259,9 +287,9 @@ class PatrawinDaoTest {
   void findCasesOrderedByCreationTime() {
     final LocalDateTime now = LocalDateTime.now();
     final Case createdNow1 = patrawinDaoTestUtils
-        .createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withCaseNumber("B1234"));
+        .createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withNumber("B1234"));
     final Case createdNow2 = patrawinDaoTestUtils
-        .createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withCaseNumber("A1234"));
+        .createCase(ImmutableCase.copyOf(fakeCaseClientGenerator.randomCase(now)).withNumber("A1234"));
     final Case createdYesterday = patrawinDaoTestUtils
         .createCase(fakeCaseClientGenerator.randomCase(now.minus(1, ChronoUnit.DAYS)));
     final Case createdLastWeek = patrawinDaoTestUtils
@@ -283,7 +311,7 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Case> nextCases = patrawinDao.findCasesOrderedByCreationTime(
-        Optional.of(now), Lists.newArrayList(createdNow2.getCaseNumber()), 3
+        Optional.of(now), Lists.newArrayList(createdNow2.getNumber()), 3
     );
 
     assertThat(nextCases)
@@ -309,9 +337,9 @@ class PatrawinDaoTest {
   void findClientsOrderedByCreationTime() {
     final LocalDateTime now = LocalDateTime.now();
     final Client createdNow1 = patrawinDaoTestUtils
-        .createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now)).withClientNumber("123"));
+        .createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now)).withNumber("123"));
     final Client createdNow2 = patrawinDaoTestUtils
-        .createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now)).withClientNumber("122"));
+        .createClient(ImmutableClient.copyOf(fakeCaseClientGenerator.randomClient(now)).withNumber("122"));
     final Client createdYesterday = patrawinDaoTestUtils
         .createClient(fakeCaseClientGenerator.randomClient(now.minus(1, ChronoUnit.DAYS)));
     final Client createdLastWeek = patrawinDaoTestUtils
@@ -333,7 +361,7 @@ class PatrawinDaoTest {
 
     // succeeding query
     final List<Client> nextClients = patrawinDao.findClientsOrderedByCreationTime(
-        Optional.of(now), Lists.newArrayList(createdNow2.clientNumber()), 3
+        Optional.of(now), Lists.newArrayList(createdNow2.getNumber()), 3
     );
 
     assertThat(nextClients)
