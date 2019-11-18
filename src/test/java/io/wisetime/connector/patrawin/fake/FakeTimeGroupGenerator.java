@@ -51,20 +51,13 @@ public class FakeTimeGroupGenerator {
         .durationSplitStrategy(randomEnum(TimeGroup.DurationSplitStrategyEnum.class));
   }
 
-  public Tag randomTag() {
-    return randomTag(format("/%s/", FAKER.lorem().word()));
-  }
-
   public Tag randomTag(final String path) {
-    return new Tag()
-        .path(path)
-        .name(FAKER.letterify("??-") + FAKER.number().numberBetween(1000, 9999))
-        .description(FAKER.lorem().characters(30, 200));
+    return randomTag(path, FAKER.letterify("??-") + FAKER.number().numberBetween(1000, 9999));
   }
 
-  public Tag randomTag(final String tagUpsertPath, String name) {
+  public Tag randomTag(final String tagUpsertPath, final String name) {
     return new Tag()
-        .path(tagUpsertPath + name)
+        .path(tagUpsertPath)
         .name(name)
         .description(FAKER.lorem().characters(30, 200));
   }
