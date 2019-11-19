@@ -23,7 +23,6 @@ import io.wisetime.connector.ConnectorModule;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
 import io.wisetime.connector.api_client.PostResult.PostResultStatus;
-import io.wisetime.connector.config.ConnectorConfigKey;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.patrawin.fake.FakeTimeGroupGenerator;
@@ -86,8 +85,6 @@ class PatrawinConnectorPostTimeTest {
 
   @BeforeEach
   void setUpTest() {
-    RuntimeConfig.clearProperty(ConnectorConfigKey.CALLER_KEY);
-
     reset(patrawinDaoMock);
 
     when(patrawinDaoMock.doesUserExist(anyString()))
@@ -115,21 +112,6 @@ class PatrawinConnectorPostTimeTest {
 
     RuntimeConfig.setProperty(ConnectorLauncher.PatrawinConnectorConfigKey.ADD_SUMMARY_TO_NARRATIVE, "true");
     connector.init(new ConnectorModule(apiClientMock, mock(ConnectorStore.class)));
-  }
-
-  @Test
-  void postTime_with_invalid_caller_key_should_fail() {
-    RuntimeConfig.setProperty(ConnectorConfigKey.CALLER_KEY, "caller-key");
-
-    final TimeGroup groupWithNoTags = fakeGenerator
-        .randomTimeGroup()
-        .callerKey("wrong-key")
-        .tags(ImmutableList.of());
-
-    assertThat(connector.postTime(mock(Request.class), groupWithNoTags).getStatus())
-        .isEqualTo(PostResultStatus.PERMANENT_FAILURE);
-
-    verify(patrawinDaoMock, never()).createWorklog(any(Worklog.class));
   }
 
   @Test
