@@ -13,7 +13,6 @@ import io.wisetime.connector.ConnectorModule;
 import io.wisetime.connector.WiseTimeConnector;
 import io.wisetime.connector.api_client.ApiClient;
 import io.wisetime.connector.api_client.PostResult;
-import io.wisetime.connector.config.ConnectorConfigKey;
 import io.wisetime.connector.config.RuntimeConfig;
 import io.wisetime.connector.datastore.ConnectorStore;
 import io.wisetime.connector.patrawin.ConnectorLauncher.PatrawinConnectorConfigKey;
@@ -252,11 +251,6 @@ public class PatrawinConnector implements WiseTimeConnector {
   @Override
   public PostResult postTime(Request request, TimeGroup timeGroup) {
     log.info("Posted time received: {}", timeGroup.getGroupId());
-
-    final Optional<String> callerKey = RuntimeConfig.getString(ConnectorConfigKey.CALLER_KEY);
-    if (callerKey.isPresent() && !callerKey.get().equals(timeGroup.getCallerKey())) {
-      return PostResult.PERMANENT_FAILURE().withMessage("Invalid caller key in post time webhook call");
-    }
 
     if (timeGroup.getTags().isEmpty()) {
       return PostResult.SUCCESS().withMessage("Time group has no tags. There is nothing to post to Patrawin.");
