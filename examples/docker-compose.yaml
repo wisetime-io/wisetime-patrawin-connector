@@ -1,0 +1,98 @@
+# Copyright (c) 2019 Practice Insight Pty Ltd. All rights reserved.
+#
+# Docker Compose manifest for running WiseTime Patrawin Connector.
+#
+# To start the WiseTime Connector, run the following command in the same directory as
+# this docker-compose.yaml file:
+#
+#   docker-compose -p wisetime-patrawin-connector up -d
+#
+# To stop the WiseTime Connector, run the following command in the same directory:
+#
+#   docker-compose down
+#
+# This docker-compose.yaml file creates a local volume for persistence. To list the
+# volume:
+#
+#   docker volume ls
+#
+version: "3"
+services:
+  wisetime-patrawin-connector:
+    labels:
+      description: WiseTime Patrawin Connector
+    image: wisetime/wisetime-patrawin-connector:latest
+    restart: always
+
+    # uncomment the ports: definition if the connector should work in webhook mode.
+    # ports:
+    #   - "8080:8080"
+
+    environment:
+      API_KEY: YOUR_WISETIME_CONNECT_API_KEY
+
+      # Set loglevel if other than default - INFO - required
+      # LOGLEVEL: DEBUG
+
+      # Disable tag uploading by setting TAG_SCAN to DISABLED (tag upload must be done by, etg. using the SQL connector)
+      TAG_SCAN: ENABLED
+      TAG_UPSERT_PATH: /Patrawin/
+      TAG_UPSERT_BATCH_SIZE: 500
+
+      # Disable activity type uploading by setting ACTIVITY_TYPE_SCAN to DISABLED. It's ENABLED by default
+      ACTIVITY_TYPE_SCAN: ENABLED
+      ACTIVITY_TYPE_BATCH_SIZE: 500
+
+      # When the pending time import is delayed the health check will start an alarm in 5 minutes.
+      # Uncomment the following setting and specify time if the connector should have different health check interval
+      # HEALTH_CHECK_INTERVAL: <Time interval in minutes>
+
+      # uncomment the following - as well as the above docker ports: definition - if the connector
+      # should work in webhook mode. If the connector should work using other than the default
+      # port, please adapt the docker ports: definition in line with the WEBHOOK_PORT variable.
+      # RECEIVE_POSTED_TIME: WEBHOOK
+      # CALLER_KEY: PICK_A_SECRET
+      # WEBHOOK_PORT: 8080
+
+      # specify if a time summary block should be added to the end of the narrative when posting time
+      ADD_SUMMARY_TO_NARRATIVE: "false"
+
+      PATRAWIN_JDBC_URL: "jdbc:sqlserver://HOST:PORT;databaseName=DATABASE_NAME;ssl=request;useCursors=true"
+      PATRAWIN_DB_USER: USERNAME
+      PATRAWIN_DB_PASSWORD: PASSWORD
+
+      # ALERT_EMAIL_ENABLED set to "true" is enabling alert emails
+      ALERT_EMAIL_ENABLED: "true"
+      # ALERT_EMAIL_INTERVAL_HH_MM: 04:30 means that interval between emails is 4 hours and 30 minutes
+      ALERT_EMAIL_INTERVAL_HH_MM: "04:30"
+      # ALERT_RECIPIENT_EMAIL_ADDRESSES  string that represents a list of emails addresses where the alerts will be send.
+      ALERT_RECIPIENT_EMAIL_ADDRESSES: "recipient1@email.com,recipient2@email.com"
+      # ALERT_SENDER_EMAIL_ADDRESS is a sender address
+      ALERT_SENDER_EMAIL_ADDRESS: "sender@email.com"
+      # ALERT_EMAIL_SENDER_USERNAME is a user name of sender
+      ALERT_EMAIL_SENDER_USERNAME: "sender"
+      # ALERT_EMAIL_SENDER_PASSWORD is a sender password
+      ALERT_EMAIL_SENDER_PASSWORD: "password"
+      # Alerts smtp configuration
+      # ALERT_MAIL_SMTP_HOST is a host name of the email server
+      ALERT_MAIL_SMTP_HOST: "smtp.host.name"
+      # ALERT_MAIL_SMTP_PORT is a port of mail server
+      ALERT_MAIL_SMTP_PORT: 587
+      # For access via tls set ALERT_STARTTLS_ENABLE to "true"
+      ALERT_STARTTLS_ENABLE: "true"
+
+      # For access via ssl set ALERT_MAIL_SMTP_SOCKET_FACTORY_PORT and ALERT_MAIL_SMTP_SOCKET_FACTORY_CLASS
+      # ALERT_MAIL_SMTP_SOCKET_FACTORY_PORT and ALERT_MAIL_SMTP_SOCKET_FACTORY_CLASS are only required for SSL
+      # ALERT_MAIL_SMTP_SOCKET_FACTORY_PORT will be defaulted to ALERT_MAIL_SMTP_PORT if not set
+      ALERT_MAIL_SMTP_SOCKET_FACTORY_PORT: 433
+      # javax.net.ssl.SSLSocketFactory is default value
+      ALERT_MAIL_SMTP_SOCKET_FACTORY_CLASS: "javax.net.ssl.SSLSocketFactory"
+
+      # Local cache for keeping track of cases and projects that have been synced
+      DATA_DIR: /usr/local/wisetime-connector/data/
+
+    volumes:
+      - data:/usr/local/wisetime-connector/data/
+volumes:
+  data:
+    driver: local
